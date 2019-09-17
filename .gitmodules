@@ -1,0 +1,3 @@
+[submodule "quic-network-simulator"]
+	path = quic-network-simulator
+	url = https://github.com/marten-seemann/quic-network-simulator
