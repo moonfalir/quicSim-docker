@@ -1,6 +1,3 @@
 [submodule "quic-network-simulator"]
 	path = quic-network-simulator
 	url = https://github.com/moonfalir/quic-network-simulator.git
-[submodule "containernet"]
-	path = containernet
-	url = https://github.com/moonfalir/containernet
