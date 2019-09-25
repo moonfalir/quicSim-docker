@@ -1,0 +1,19 @@
+version: "3.7"
+
+services:
+  containernet:
+    build: .
+    image: containernet
+    container_name: containernet
+    hostname: containernet
+    stdin_open: true
+    tty: true
+    privileged: true
+    pid: "host"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - SERVER=$SERVER
+      - SERVER_PARAMS=$SERVER_PARAMS
+      - CLIENT=$CLIENT
+      - CLIENT_PARAMS=$CLIENT_PARAMS
