@@ -14,7 +14,10 @@ RUN apt-get update && apt-get install -y \
  doxygen \
  graphviz \
  mercurial \
- pkg-config
+ pkg-config \
+ net-tools \
+ iputils-ping \
+ iproute2
 
 # install quant
 RUN git clone https://github.com/NTAP/quant
