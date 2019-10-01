@@ -9,13 +9,12 @@ from argparse import ArgumentParser
 from time import sleep
 
 class Simple_p2p:
-    def run(self, sim_args):
-        #sim_parser = ArgumentParser(description='Run mininet network simulator')
-        #sim_parser.add_argument('--delay', action='store', type=str, required=True, help='One-way delay of network, specify with units.')
-        #sim_parser.add_argument('--bandwidth', action='store', type=float, required=True, help='Bandwidth of the link in Mbit/s.')
-        #sim_parser.add_argument('--queue', action='store', type=int, required=True, help='Queue size of the queue attached to the link. Specified in packets.')
-        #sim_args = sim_parser.parse_args()
+    def addCLIArguments(self, p2p_parser):
+        p2p_parser.add_argument('--delay', action='store', type=str, required=True, help='One-way delay of network, specify with units.')
+        p2p_parser.add_argument('--bandwidth', action='store', type=float, required=True, help='Bandwidth of the link in Mbit/s.')
+        p2p_parser.add_argument('--queue', action='store', type=int, required=True, help='Queue size of the queue attached to the link. Specified in packets.')
 
+    def run(self, sim_args):
         if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR']):
             # TODO show help
             exit(1)
