@@ -18,6 +18,19 @@ class Blackhole:
         blackhole_parser.add_argument('--repeat', action='store', type=int, required=False, help='Repeat blocking and unblocking of traffic')
         blackhole_parser.add_argument('--direction', action='store', type=int, required=False, help='Specifiy the direction in which to block traffic.')
 
+    def startTest(self, client, net, command, sim_args):
+        client.cmd(command + " &")
+        pid = client.cmd('echo $!')
+        sleep(2)
+        info('tc qdisc change dev server-eth0 parent 5:1 netem delay ' + sim_args.delay + ' loss 100% limit ' + str(sim_args.queue) + '\n')
+        net.get('server').cmd('tc qdisc change dev server-eth0 parent 5:1 netem delay ' + sim_args.delay + ' loss 100% limit ' + str(sim_args.queue))
+        net.get('client').cmd('tc qdisc change dev client-eth0 parent 5:1 netem delay ' + sim_args.delay + ' loss 100% limit ' + str(sim_args.queue))
+        sleep(3)
+        net.get('server').cmd('tc qdisc change dev server-eth0 parent 5:1 netem delay ' + sim_args.delay + ' limit ' + str(sim_args.queue))
+        net.get('client').cmd('tc qdisc change dev client-eth0 parent 5:1 netem delay ' + sim_args.delay + ' limit ' + str(sim_args.queue))
+
+        client.cmd('wait ' + pid)
+
     def run(self, sim_args):
         if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR']):
             # TODO show help
@@ -47,7 +60,7 @@ class Blackhole:
         info('*** Starting network\n')
         net.start()
         info('\n' + client_command + '\n')
-        info(client.cmd(client_command) + "\n")
+        self.startTest(client, net, client_command, sim_args)
         # Wait some time to allow server finish writing to log file
         sleep(5)
         info('*** Stopping network')
