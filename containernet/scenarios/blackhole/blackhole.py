@@ -5,17 +5,22 @@ from mininet.cli import CLI
 from mininet.link import TCLink, Intf
 from mininet.log import info, setLogLevel
 from os import environ
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 from time import sleep
 
 class Blackhole:
+    def check_positive(self, value):
+        ivalue = int(value)
+        if ivalue <= 0:
+            raise ArgumentTypeError("%s is an invalid positive int value" % value)
+        return ivalue
     def addCLIArguments(self, blackhole_parser):
         blackhole_parser.add_argument('--delay', action='store', type=str, required=True, help='One-way delay of network, specify with units.')
         blackhole_parser.add_argument('--bandwidth', action='store', type=float, required=True, help='Bandwidth of the link in Mbit/s.')
         blackhole_parser.add_argument('--queue', action='store', type=int, required=True, help='Queue size of the queue attached to the link. Specified in packets.')
-        blackhole_parser.add_argument('--on', action='store', type=int, required=True, help='Time period that traffic is allowed to flow.')
-        blackhole_parser.add_argument('--off', action='store', type=int, required=True, help='Time period that traffic is blocked.')
-        blackhole_parser.add_argument('--repeat', action='store', type=int, required=False, help='Repeat blocking and unblocking of traffic')
+        blackhole_parser.add_argument('--on', action='store', type=self.check_positive, required=True, help='Time period that traffic is allowed to flow.')
+        blackhole_parser.add_argument('--off', action='store', type=self.check_positive, required=True, help='Time period that traffic is blocked.')
+        blackhole_parser.add_argument('--repeat', action='store', type=self.check_positive, required=False, help='Repeat blocking and unblocking of traffic')
         blackhole_parser.add_argument('--direction', action='store', type=int, required=False, help='Specifiy the direction in which to block traffic.')
 
     def startTest(self, client, net, command, sim_args):
