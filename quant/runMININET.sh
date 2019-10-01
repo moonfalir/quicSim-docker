@@ -3,6 +3,6 @@ CLIENT="quant" \
 CLIENT_PARAMS="./bin/client -i client-eth0 -q /logs/clientmnquant_$CURTIME.qlog http://10.0.0.251:4433/500000" \
 SERVER="quant" \
 SERVER_PARAMS="./bin/server -d ./ -i server-eth0 -q /logs/servermnquant_$CURTIME.qlog" \
-SCENARIO="blackhole --delay 50ms --bandwidth 1 --queue 25 --on 10 --off 2" \
+SCENARIO="blackhole --delay 50ms --bandwidth 1 --queue 25 --on 3 --off 4" \
 LOGDIR="$PWD" \
 docker-compose -f ../containernet/docker-compose.yml up
