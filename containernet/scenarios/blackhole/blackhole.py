@@ -20,8 +20,8 @@ class Blackhole:
         blackhole_parser.add_argument('--queue', action='store', type=int, required=True, help='Queue size of the queue attached to the link. Specified in packets.')
         blackhole_parser.add_argument('--on', action='store', type=self.check_positive, required=True, help='Time period that traffic is allowed to flow.')
         blackhole_parser.add_argument('--off', action='store', type=self.check_positive, required=True, help='Time period that traffic is blocked.')
-        blackhole_parser.add_argument('--repeat', action='store', type=self.check_positive, required=False, help='Repeat blocking and unblocking of traffic')
-        blackhole_parser.add_argument('--direction', action='store', type=int, required=False, help='Specifiy the direction in which to block traffic.')
+        blackhole_parser.add_argument('--repeat', action='store', type=self.check_positive, required=False, nargs='?', const=1, default=1, help='Repeat blocking and unblocking of traffic')
+        blackhole_parser.add_argument('--direction', action='store', type=str, required=False, choices={'both', 'toclient', 'toserver'}, nargs='?', const='both', default='both', help='Specifiy the direction in which to block traffic.')
 
     def startTest(self, client, net, command, sim_args):
         # start quic client as background process
@@ -32,13 +32,21 @@ class Blackhole:
         for i in range(0, sim_args.repeat):
             sleep(sim_args.on)
             info('Starting blackhole, traffic will be blocked\n')
-            net.get('server').cmd('tc qdisc change dev server-eth0 parent 5:1 netem delay ' + sim_args.delay + ' loss 100% limit ' + str(sim_args.queue))
-            net.get('client').cmd('tc qdisc change dev client-eth0 parent 5:1 netem delay ' + sim_args.delay + ' loss 100% limit ' + str(sim_args.queue))
+            if (sim_args.direction == 'both' or sim_args.direction == 'toclient'):
+                info('toclient off\n')
+                net.get('server').cmd('tc qdisc change dev server-eth0 parent 5:1 netem delay ' + sim_args.delay + ' loss 100% limit ' + str(sim_args.queue))
+            if (sim_args.direction == 'both' or sim_args.direction == 'toserver'):
+                info('toserver off\n')
+                net.get('client').cmd('tc qdisc change dev client-eth0 parent 5:1 netem delay ' + sim_args.delay + ' loss 100% limit ' + str(sim_args.queue))
             
             sleep(sim_args.off)
             info('Stopping blackhole, traffic will be transmitted\n')
-            net.get('server').cmd('tc qdisc change dev server-eth0 parent 5:1 netem delay ' + sim_args.delay + ' limit ' + str(sim_args.queue))
-            net.get('client').cmd('tc qdisc change dev client-eth0 parent 5:1 netem delay ' + sim_args.delay + ' limit ' + str(sim_args.queue))
+            if (sim_args.direction == 'both' or sim_args.direction == 'toclient'):
+                info('toclient on\n')
+                net.get('server').cmd('tc qdisc change dev server-eth0 parent 5:1 netem delay ' + sim_args.delay + ' limit ' + str(sim_args.queue))
+            if (sim_args.direction == 'both' or sim_args.direction == 'toserver'):
+                info('toserver on\n')
+                net.get('client').cmd('tc qdisc change dev client-eth0 parent 5:1 netem delay ' + sim_args.delay + ' limit ' + str(sim_args.queue))
 
         # wait till quic client is finished before continueing
         client.cmd('wait ' + pid)
