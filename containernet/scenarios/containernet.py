@@ -21,6 +21,13 @@ from blackhole import Blackhole
 blackhole = Blackhole()
 blackhole.addCLIArguments(sub_parser)
 
+#Add droplist arguments
+sub_parser = subparsers.add_parser('droplist')
+sys.path.append(curdir + '/droplist')
+from droplist import Droplist
+droplist = Droplist()
+droplist.addCLIArguments(sub_parser)
+
 sim_args = sim_parser.parse_args()
 
 available_scenarios = ['simple_p2p']
@@ -33,9 +40,14 @@ def run_blackhole():
     blackhole = Blackhole()
     blackhole.run(sim_args)
 
+def run_droplist():
+    droplist = Droplist()
+    droplist.run(sim_args)
+
 switch = {
     'simple_p2p': run_simple_p2p,
-    'blackhole': run_blackhole
+    'blackhole': run_blackhole,
+    'droplist': run_droplist
 }
 func = switch.get(sim_args.scenario)
 func()

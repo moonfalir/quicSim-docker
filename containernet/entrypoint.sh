@@ -3,6 +3,9 @@
 # start OVS
 service openvswitch-switch start
 
+# update containernet
+git pull && python setup.py install
+
 # check if docker socket is mounted
 if [ ! -S /var/run/docker.sock ]; then
     echo 'Error: the Docker socket file "/var/run/docker.sock" was not found. It should be mounted as a volume.'
