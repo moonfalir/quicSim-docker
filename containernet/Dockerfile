@@ -30,6 +30,9 @@ RUN pip2 install "more-itertools<=5.0.0"
 # tell containernet that it runs in a container
 ENV CONTAINERNET_NESTED 1
 
+# Copy custom controllers to pox directory
+RUN cp -a /containernet/poxcontrollers/. /pox/pox/forwarding/
+
 COPY ./entrypoint.sh .
 COPY ./scenarios/ ./scenarios/
 
