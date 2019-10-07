@@ -4,4 +4,4 @@ CLIENT_PARAMS="-i eth0 -q /logs/clientquant_$CURTIME.qlog http://192.168.100.100
 SERVER="quant" \
 SERVER_PARAMS="-d ./ -i eth0 -q /logs/serverquant_$CURTIME.qlog" \
 SCENARIO="simple-p2p --delay=15ms --bandwidth=10Mbps --queue=25" \
-docker-compose -f ../quic-network-simulator/docker-compose.yml up
+docker-compose -f ../quic-network-simulator/docker-compose.yml up --abort-on-container-exit
