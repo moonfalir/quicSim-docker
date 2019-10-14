@@ -1,4 +1,4 @@
-FROM martenseemann/quic-network-simulator-endpoint:latest
+FROM quic-network-simulator-endpoint:latest
 
 # download and build your QUIC implementation
 RUN apt-get update && apt-get install -y \
@@ -42,7 +42,7 @@ WORKDIR /picoquic
 
 RUN cmake . && make
 # copy run script and run it
-#COPY run_endpoint.sh .
-#RUN chmod +x run_endpoint.sh
+COPY run_endpoint.sh .
+RUN chmod +x run_endpoint.sh
 
-#ENTRYPOINT [ "./run_endpoint.sh" ]
+ENTRYPOINT [ "./run_endpoint.sh" ]

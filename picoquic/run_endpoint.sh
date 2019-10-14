@@ -9,8 +9,10 @@
 # - CLIENT_PARAMS contains user-supplied command line parameters
 
 if [ "$ROLE" == "client" ]; then
-    ./wait-for-it.sh sim:57832 -s -t 30    
-    python3 examples/http3_client.py -v $CLIENT_PARAMS
+    /wait-for-it.sh sim:57832 -s -t 30    
+    ./picoquicdemo $CLIENT_PARAMS
+    ./picolog_t -f qlog /logs/clientpico_qns.log > /logs/clientpico_qns.qlog 
 elif [ "$ROLE" == "server" ]; then
-    python3 examples/http3_server.py -v $SERVER_PARAMS
+    ./picoquicdemo $SERVER_PARAMS
+    ./picolog_t -f qlog /logs/serverpico_qns.log > /logs/serverpico_qns.qlog
 fi
