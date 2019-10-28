@@ -1,0 +1,23 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 12/12   #P:8
+#
+#                              _-----=> irqs-off
+#                             / _----=> need-resched
+#                            | / _---=> hardirq/softirq
+#                            || / _--=> preempt-depth
+#                            ||| /     delay
+#           TASK-PID   CPU#  ||||    TIMESTAMP  FUNCTION
+#              | |       |   ||||       |         |
+           iperf-14370 [000] ..s1 12660.776451: tcp_probe: src=127.0.0.1:5001 dest=127.0.0.1:59912 mark=0x0 data_len=32741 snd_nxt=0x6c998059 snd_una=0x6c998059 snd_cwnd=10 ssthresh=67 snd_wnd=65536 srtt=40 rcv_wnd=65483 sock_cookie=1
+           iperf-14370 [000] .... 12660.776468: tcp_probe: src=127.0.0.1:59912 dest=127.0.0.1:5001 mark=0x0 data_len=0 snd_nxt=0xf0fe5d7d snd_una=0xf0fddd98 snd_cwnd=10 ssthresh=67 snd_wnd=65483 srtt=52 rcv_wnd=65536 sock_cookie=2
+           iperf-14370 [000] ..s1 12660.776499: tcp_probe: src=127.0.0.1:5001 dest=127.0.0.1:59912 mark=0x0 data_len=32741 snd_nxt=0x6c998059 snd_una=0x6c998059 snd_cwnd=10 ssthresh=67 snd_wnd=65536 srtt=40 rcv_wnd=48768 sock_cookie=1
+           iperf-14372 [006] ..s1 12660.783070: tcp_probe: src=127.0.0.1:59912 dest=127.0.0.1:5001 mark=0x0 data_len=0 snd_nxt=0xf0fedd62 snd_una=0xf0fe5d7d snd_cwnd=10 ssthresh=67 snd_wnd=48768 srtt=50 rcv_wnd=65536 sock_cookie=2
+           iperf-14372 [006] .... 12660.783120: tcp_probe: src=127.0.0.1:5001 dest=127.0.0.1:59912 mark=0x0 data_len=32741 snd_nxt=0x6c998059 snd_una=0x6c998059 snd_cwnd=10 ssthresh=67 snd_wnd=65536 srtt=40 rcv_wnd=65536 sock_cookie=1
+           iperf-14372 [006] .... 12660.783122: tcp_probe: src=127.0.0.1:5001 dest=127.0.0.1:59912 mark=0x0 data_len=32741 snd_nxt=0x6c998059 snd_una=0x6c998059 snd_cwnd=10 ssthresh=67 snd_wnd=65536 srtt=40 rcv_wnd=65536 sock_cookie=1
+           iperf-14372 [006] ..s1 12660.783135: tcp_probe: src=127.0.0.1:59912 dest=127.0.0.1:5001 mark=0x0 data_len=0 snd_nxt=0xf0ffdd2c snd_una=0xf0fedd62 snd_cwnd=10 ssthresh=67 snd_wnd=65536 srtt=868 rcv_wnd=65536 sock_cookie=2
+           iperf-14372 [006] .... 12660.783142: tcp_probe: src=127.0.0.1:5001 dest=127.0.0.1:59912 mark=0x0 data_len=108 snd_nxt=0x6c998059 snd_una=0x6c998059 snd_cwnd=10 ssthresh=67 snd_wnd=65536 srtt=40 rcv_wnd=65536 sock_cookie=1
+           iperf-14372 [006] ..s1 12660.783147: tcp_probe: src=127.0.0.1:59912 dest=127.0.0.1:5001 mark=0x0 data_len=0 snd_nxt=0xf0ffdd98 snd_una=0xf0ffdd2c snd_cwnd=10 ssthresh=67 snd_wnd=65536 srtt=766 rcv_wnd=65536 sock_cookie=2
+           iperf-14370 [000] ..s1 12660.786625: tcp_probe: src=127.0.0.1:5001 dest=127.0.0.1:59912 mark=0x0 data_len=0 snd_nxt=0x6c998059 snd_una=0x6c998059 snd_cwnd=10 ssthresh=67 snd_wnd=65536 srtt=40 rcv_wnd=65536 sock_cookie=1
+          <idle>-0     [005] ..s. 12662.487440: tcp_probe: src=192.168.16.224:60674 dest=3.120.198.117:443 mark=0x0 data_len=56 snd_nxt=0x13d4e06c snd_una=0x13d4e036 snd_cwnd=10 ssthresh=2147483647 snd_wnd=36864 srtt=24796 rcv_wnd=64128 sock_cookie=c6
+ MediaDe~hine #1-13491 [005] ..s. 12666.103409: tcp_probe: src=192.168.16.224:55748 dest=3.120.198.117:443 mark=0x0 data_len=56 snd_nxt=0xf25109b2 snd_una=0xf251097c snd_cwnd=10 ssthresh=2147483647 snd_wnd=49152 srtt=24042 rcv_wnd=64128 sock_cookie=3
