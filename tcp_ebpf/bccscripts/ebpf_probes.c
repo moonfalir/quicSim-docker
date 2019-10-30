@@ -1,15 +1,3 @@
-#!/usr/bin/python
-
-from __future__ import print_function
-from bcc import BPF
-from socket import inet_ntop, AF_INET
-from struct import pack
-import time
-import json
-import ctypes
-
-# define BPF program
-bpf_text = """
 #define KBUILD_MODNAME "tcpcctrace"
 #include <uapi/linux/ptrace.h>
 #include <net/sock.h>
@@ -76,7 +64,6 @@ void trace_rcv_established(struct pt_regs *ctx, struct sock *sk)
 		u16 dport = sk->__sk_common.skc_dport;
 		info.dport = ntohs(dport);
     	const struct tcp_sock *tp = tcp_sk(sk);
-    	//const struct bbr *bbr = inet_csk_ca(sk);
     	info.snd_cwnd = tp->snd_cwnd; //Sending congestion window
 		info.min_rtt = tp->rtt_min.s[0].v;
 		info.smoothed_rtt = tp->srtt_us >> 3; //smoothed round trip time << 3 in usecs
@@ -90,57 +77,6 @@ void trace_rcv_established(struct pt_regs *ctx, struct sock *sk)
 	}
 }
 
-void trace_retrans(struct pt_regs *ctx, struct sock *sk) {
+void trace_statechange(struct pt_regs *ctx, struct sock *sk) {
 
 }
-"""
-
-# initialize BPF
-b = BPF(text=bpf_text)
-b.attach_kretprobe(event="tcp_rcv_established", fn_name="trace_rcv_established")
-qlog = {
-	"qlog_version": "draft-01",
-	"traces": [{
-		"common_fields": {},
-		"event_fields": [],
-		"events": []
-	}]
-}
-
-with open('/proc/uptime', 'r') as f:
-	uptime_s = float(f.readline().split()[0])
-	start_time = time.time() - uptime_s
-
-
-def print_tcp_event(cpu, data, size):
-	event = b["tcp_events"].event(data)
-	output_json = {
-		"time_py": "%.6f" % time.time(),
-		"time_kernel": start_time + (ctypes.c_float(event.timestamp).value / 1000000000),
-		"source": inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport),
-		"dest": inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport),
-		"cwnd": str(event.snd_cwnd),
-		"min_rtt": str(event.min_rtt),
-		"srtt": str(event.smoothed_rtt),
-		"lrtt": str(event.latest_rtt),
-		"bytes_sent": str(event.bytes_sent),
-		"bytes_acked": str(event.bytes_acked),
-		"ssthresh": str(event.ssthresh)
-	}
-	print(output_json['source'])
-	if output_json['source'].__contains__("127.0.0.1"):
-		qlog["traces"][0]["events"].append(output_json)
-
-print("Tracing tcp events ... Hit Ctrl-C to end")
-
-# header
-print("Output network information ...")
-
-b["tcp_events"].open_perf_buffer(print_tcp_event)
-while 1:
-    try:
-        b.perf_buffer_poll()
-    except KeyboardInterrupt:
-		with open('/scripts/' + str(time.time()) + '.qlog', 'w') as f:
-			f.write(json.dumps(qlog))
-		exit()

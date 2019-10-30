@@ -36,15 +36,19 @@ class Simple_p2p:
                                volumes=[logdir + '/logs/server:/logs'])
         client = net.addDocker('client', ip='10.0.0.252', 
                                dimage=client_image + ":latest", 
-                               volumes=[logdir + '/logs/client:/logs'])
+                               volumes=[logdir + '/logs/client:/logs', '/sys/kernel/debug:/sys/kernel/debug:ro', logdir + '/bccscripts:/scripts'])
 
         info('*** Creating links\n')
         net.addLink(server, client, cls=TCLink, delay=sim_args.delay, bw=sim_args.bandwidth, max_queue_size=sim_args.queue)
         info('*** Starting network\n')
         net.start()
+        client.cmd("tcpdump -i client-eth0 -w /scripts/test.pcap &")
+        sleep(2)
         info('\n' + client_command + '\n')
         info(client.cmd(client_command) + "\n")
         # Wait some time to allow server finish writing to log file
-        sleep(5)
+        sleep(3)
+        client.cmd("kill $!")
+        sleep(3)
         info('*** Stopping network')
         net.stop()
