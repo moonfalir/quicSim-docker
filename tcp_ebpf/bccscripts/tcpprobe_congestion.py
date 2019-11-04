@@ -12,6 +12,10 @@ import ctypes
 b = BPF(src_file="ebpf_probes.c")
 #b.attach_kprobe(event="tcp_rcv_established", fn_name="trace_rcv_established")
 b.attach_kprobe(event="bictcp_state", fn_name="trace_cubictcp_state")
+b.attach_kretprobe(event="bictcp_recalc_ssthresh", fn_name="trace_recalc_ssthresh", maxactive=24)
+b.attach_kprobe(event="bictcp_cwnd_event", fn_name="trace_cwnd_event")
+b.attach_kprobe(event="tcp_cong_avoid_ai", fn_name="trace_cong_avoid")
+b.attach_kretprobe(event="tcp_slow_start", fn_name="trace_slow_start", maxactive=24)
 qlog = {
 	"qlog_version": "draft-01",
 	"traces": [
@@ -57,6 +61,14 @@ ca_states[2] = "TCP_CA_CWR"
 ca_states[3] = "TCP_CA_Recovery"
 ca_states[4] = "TCP_CA_Loss"
 
+cwnd_event_types = {}
+cwnd_event_types[0] = "CA_EVENT_TX_START"
+cwnd_event_types[1] = "CA_EVENT_CWND_RESTART"
+cwnd_event_types[2] = "CA_EVENT_COMPLETE_CWR"
+cwnd_event_types[3] = "CA_EVENT_LOSS"
+cwnd_event_types[4] = "CA_EVENT_ECN_NO_CE"
+cwnd_event_types[5] = "CA_EVENT_ECN_IS_CE"
+
 with open('/proc/uptime', 'r') as f:
 	uptime_s = float(f.readline().split()[0])
 	start_time = ti.time() - uptime_s
@@ -75,15 +87,13 @@ def print_tcp_event(cpu, data, size):
 			qlog["traces"][0]["common_fields"]["reference_time"] = reference_time_s
 		time = reference_time_s - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
 		output_arr = []
-		output_arr.append("%.6f" % (abs(time)))
+		output_arr.append("%.6f" % (abs(time) * 1000))
 		output_arr.append("recovery")
 		output_arr.append("metrics_updated")
 		output_arr.append(
 			{
 				"bytes_in_flight": event.bytes_sent - event.bytes_acked, 
-				"cwnd": event.snd_cwnd,
-				"sender": inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport),
-				"receiver": inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
+				"cwnd": event.snd_cwnd
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
@@ -100,9 +110,7 @@ def print_tcp_event(cpu, data, size):
 		output_arr.append(
 			{
 				"bytes_in_flight": event.bytes_sent - event.bytes_acked, 
-				"cwnd": event.snd_cwnd,
-				"sender": inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport),
-				"receiver": inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
+				"cwnd": event.snd_cwnd
 			}
 		)
 		qlog["traces"][1]["events"].append(output_arr)
@@ -114,11 +122,148 @@ def print_ca_state(cpu, data, size):
 	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
 	if sender.__contains__("10.0.0.252"):
 		global reference_time_s
-		print("client new state: " + ca_states[event.new_state])
+		if reference_time_s == -1:
+			reference_time_s = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
+			qlog["traces"][0]["common_fields"]["reference_time"] = reference_time_s
+		time = reference_time_s - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("metrics_updated")
+		output_arr.append(
+			{
+				"ca_state": ca_states[event.new_state]
+			}
+		)
+		qlog["traces"][0]["events"].append(output_arr)
 	if sender.__contains__("10.0.0.251"):
 		global reference_time_c
-		print("server new state: " + ca_states[event.new_state])
+		if reference_time_c == -1:
+			reference_time_c = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
+			qlog["traces"][1]["common_fields"]["reference_time"] = reference_time_c
+		time = reference_time_c - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("metrics_updated")
+		output_arr.append(
+			{
+				"ca_state": ca_states[event.new_state]
+			}
+		)
+		qlog["traces"][1]["events"].append(output_arr)
 
+def print_ssthresh_event(cpu, data, size):
+	event = b["ssthresh_event"].event(data)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
+	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
+	if sender.__contains__("10.0.0.252"):
+		global reference_time_s
+		if reference_time_s == -1:
+			reference_time_s = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
+			qlog["traces"][0]["common_fields"]["reference_time"] = reference_time_s
+		time = reference_time_s - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("metrics_updated")
+		output_arr.append(
+			{
+				"ssthresh": str(event.ssthresh)
+			}
+		)
+		qlog["traces"][0]["events"].append(output_arr)
+	if sender.__contains__("10.0.0.251"):
+		global reference_time_c
+		if reference_time_c == -1:
+			reference_time_c = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
+			qlog["traces"][1]["common_fields"]["reference_time"] = reference_time_c
+		time = reference_time_c - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("metrics_updated")
+		output_arr.append(
+			{
+				"ssthresh": str(event.ssthresh)
+			}
+		)
+		qlog["traces"][1]["events"].append(output_arr)
+
+def print_cwnd_event(cpu, data, size):
+	global cwnd_event_types
+	event = b["cwnd_event"].event(data)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
+	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
+	if sender.__contains__("10.0.0.252"):
+		global reference_time_s
+		if reference_time_s == -1:
+			reference_time_s = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
+			qlog["traces"][0]["common_fields"]["reference_time"] = reference_time_s
+		time = reference_time_s - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("metrics_updated")
+		output_arr.append(
+			{
+				"cwnd_event": cwnd_event_types[event.event_type]
+			}
+		)
+		qlog["traces"][0]["events"].append(output_arr)
+	if sender.__contains__("10.0.0.251"):
+		global reference_time_c
+		if reference_time_c == -1:
+			reference_time_c = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
+			qlog["traces"][1]["common_fields"]["reference_time"] = reference_time_c
+		time = reference_time_c - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("metrics_updated")
+		output_arr.append(
+			{
+				"cwnd_event": cwnd_event_types[event.event_type]
+			}
+		)
+		qlog["traces"][1]["events"].append(output_arr)
+
+def print_cwnd_change(cpu, data, size):
+	event = b["cwnd_change"].event(data)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
+	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
+	if sender.__contains__("10.0.0.252"):
+		global reference_time_s
+		if reference_time_s == -1:
+			reference_time_s = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
+			qlog["traces"][0]["common_fields"]["reference_time"] = reference_time_s
+		time = reference_time_s - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("metrics_updated")
+		output_arr.append(
+			{
+				"cwnd": str(event.snd_cwnd)
+			}
+		)
+		qlog["traces"][0]["events"].append(output_arr)
+	if sender.__contains__("10.0.0.251"):
+		global reference_time_c
+		if reference_time_c == -1:
+			reference_time_c = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
+			qlog["traces"][1]["common_fields"]["reference_time"] = reference_time_c
+		time = reference_time_c - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("metrics_updated")
+		output_arr.append(
+			{
+				"cwnd": str(event.snd_cwnd)
+			}
+		)
+		qlog["traces"][1]["events"].append(output_arr)
 
 
 print("Tracing tcp events ... Hit Ctrl-C to end")
@@ -128,10 +273,13 @@ print("Output network information ...")
 
 b["tcp_events"].open_perf_buffer(print_tcp_event)
 b["ca_state"].open_perf_buffer(print_ca_state)
+b["ssthresh_event"].open_perf_buffer(print_ssthresh_event)
+b["cwnd_event"].open_perf_buffer(print_cwnd_event)
+b["cwnd_change"].open_perf_buffer(print_cwnd_change)
 while 1:
     try:
         b.perf_buffer_poll()
     except KeyboardInterrupt:
-		#with open('/scripts/' + str(ti.time()) + '.qlog', 'w') as f:
-		#	f.write(json.dumps(qlog))
+		with open('/scripts/' + str(ti.time()) + '.qlog', 'w') as f:
+			f.write(json.dumps(qlog))
 		exit()

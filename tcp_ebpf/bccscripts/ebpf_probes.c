@@ -4,6 +4,8 @@
 #include <bcc/proto.h>
 #include <net/tcp.h>
 
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+
 struct congestion_info {
 	u64 timestamp;
 	u32 saddr;
@@ -27,8 +29,39 @@ struct ca_init_info {
     u64 timestamp;
     u8 new_state;
 };
+
+struct ca_ssthresh_info {
+	u32 saddr;
+	u32 daddr;
+	u16 sport;
+    u16 dport;
+    u64 timestamp;
+	u32 ssthresh;
+};
+
+struct cwnd_event_info {
+	u32 saddr;
+	u32 daddr;
+	u16 sport;
+    u16 dport;
+    u64 timestamp;
+	int event_type;
+};
+
+struct cwnd_info {
+	u32 saddr;
+	u32 daddr;
+	u16 sport;
+    u16 dport;
+    u64 timestamp;
+	u32 snd_cwnd;
+};
+
 BPF_PERF_OUTPUT(tcp_events);
 BPF_PERF_OUTPUT(ca_state);
+BPF_PERF_OUTPUT(ssthresh_event);
+BPF_PERF_OUTPUT(cwnd_event);
+BPF_PERF_OUTPUT(cwnd_change);
 
 
 void trace_rcv_established(struct pt_regs *ctx, struct sock *sk)
@@ -36,6 +69,7 @@ void trace_rcv_established(struct pt_regs *ctx, struct sock *sk)
 	u16 family = sk->__sk_common.skc_family;
 	if (family == AF_INET) {
     	struct congestion_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
 		info.daddr = sk->__sk_common.skc_daddr;
 		info.sport = sk->__sk_common.skc_num;
@@ -50,7 +84,6 @@ void trace_rcv_established(struct pt_regs *ctx, struct sock *sk)
 		info.bytes_acked = tp->bytes_acked;
 		info.ssthresh = tp->snd_ssthresh; //Slow start size threshold
 
-		info.timestamp = bpf_ktime_get_ns();
     	tcp_events.perf_submit(ctx, &info, sizeof(info));
 	}
 }
@@ -59,6 +92,7 @@ void trace_cubictcp_state(struct pt_regs *ctx, struct sock *sk, u8 new_state) {
     u16 family = sk->__sk_common.skc_family;
 	if (family == AF_INET) {
         struct ca_init_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
         info.saddr = sk->__sk_common.skc_rcv_saddr;
 		info.daddr = sk->__sk_common.skc_daddr;
 		info.sport = sk->__sk_common.skc_num;
@@ -66,7 +100,96 @@ void trace_cubictcp_state(struct pt_regs *ctx, struct sock *sk, u8 new_state) {
 		info.dport = ntohs(dport);
         info.new_state = new_state;
 
-        info.timestamp = bpf_ktime_get_ns();
     	ca_state.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+void trace_recalc_ssthresh(struct pt_regs *ctx, struct sock *sk) {
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct ca_ssthresh_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+		info.daddr = sk->__sk_common.skc_daddr;
+		info.sport = sk->__sk_common.skc_num;
+		u16 dport = sk->__sk_common.skc_dport;
+		info.dport = ntohs(dport);
+
+		u32 retval = regs_return_value(ctx);
+		info.ssthresh = retval;
+		ssthresh_event.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+void trace_cwnd_event(struct pt_regs *ctx, struct sock *sk, enum tcp_ca_event event) {
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct cwnd_event_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+		info.daddr = sk->__sk_common.skc_daddr;
+		info.sport = sk->__sk_common.skc_num;
+		u16 dport = sk->__sk_common.skc_dport;
+		info.dport = ntohs(dport);
+
+		info.event_type = event;
+		cwnd_event.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+static u32 calc_new_cwnd(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked) {
+	u32 snd_cwnd_cnt = tp->snd_cwnd_cnt;
+	u32 snd_cwnd = tp->snd_cwnd;
+	u32 snd_cwnd_clamp = tp->snd_cwnd_clamp;
+
+	/* If credits accumulated at a higher w, apply them gently now. */
+	if (snd_cwnd_cnt >= w) {
+		snd_cwnd_cnt = 0;
+		snd_cwnd++;
+	}
+	
+	snd_cwnd_cnt += acked;
+	if (snd_cwnd_cnt >= w) {
+		u32 delta = snd_cwnd_cnt / w;
+
+		snd_cwnd_cnt -= delta * w;
+		snd_cwnd += delta;
+	}
+	snd_cwnd = MIN(snd_cwnd, snd_cwnd_clamp);
+	return snd_cwnd;
+}
+
+void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked) {
+	const struct sock *sk = &(tp->inet_conn.icsk_inet.sk);
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct cwnd_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+		info.daddr = sk->__sk_common.skc_daddr;
+		info.sport = sk->__sk_common.skc_num;
+		u16 dport = sk->__sk_common.skc_dport;
+		info.dport = ntohs(dport);
+
+		info.snd_cwnd = calc_new_cwnd(ctx, tp, w, acked);
+		if (tp->snd_cwnd != info.snd_cwnd)
+			cwnd_change.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+void trace_slow_start(struct pt_regs *ctx, struct tcp_sock *tp) {
+	const struct sock *sk = &(tp->inet_conn.icsk_inet.sk);
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct cwnd_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+		info.daddr = sk->__sk_common.skc_daddr;
+		info.sport = sk->__sk_common.skc_num;
+		u16 dport = sk->__sk_common.skc_dport;
+		info.dport = ntohs(dport);
+
+		info.snd_cwnd = tp->snd_cwnd;
+		cwnd_change.perf_submit(ctx, &info, sizeof(info));
 	}
 }
