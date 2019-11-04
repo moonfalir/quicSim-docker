@@ -9,9 +9,6 @@
 struct congestion_info {
 	u64 timestamp;
 	u32 saddr;
-	u32 daddr;
-	u16 sport;
-    u16 dport;
     u32 snd_cwnd;
 	u32 min_rtt;
 	u32 smoothed_rtt;
@@ -23,36 +20,24 @@ struct congestion_info {
 
 struct ca_init_info {
     u32 saddr;
-	u32 daddr;
-	u16 sport;
-    u16 dport;
     u64 timestamp;
     u8 new_state;
 };
 
 struct ca_ssthresh_info {
 	u32 saddr;
-	u32 daddr;
-	u16 sport;
-    u16 dport;
     u64 timestamp;
 	u32 ssthresh;
 };
 
 struct cwnd_event_info {
 	u32 saddr;
-	u32 daddr;
-	u16 sport;
-    u16 dport;
     u64 timestamp;
 	int event_type;
 };
 
 struct cwnd_info {
 	u32 saddr;
-	u32 daddr;
-	u16 sport;
-    u16 dport;
     u64 timestamp;
 	u32 snd_cwnd;
 };
@@ -71,10 +56,6 @@ void trace_rcv_established(struct pt_regs *ctx, struct sock *sk)
     	struct congestion_info info = {};
 		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
-		info.daddr = sk->__sk_common.skc_daddr;
-		info.sport = sk->__sk_common.skc_num;
-		u16 dport = sk->__sk_common.skc_dport;
-		info.dport = ntohs(dport);
     	const struct tcp_sock *tp = tcp_sk(sk);
     	info.snd_cwnd = tp->snd_cwnd; //Sending congestion window
 		info.min_rtt = tp->rtt_min.s[0].v;
@@ -94,10 +75,6 @@ void trace_cubictcp_state(struct pt_regs *ctx, struct sock *sk, u8 new_state) {
         struct ca_init_info info = {};
 		info.timestamp = bpf_ktime_get_ns();
         info.saddr = sk->__sk_common.skc_rcv_saddr;
-		info.daddr = sk->__sk_common.skc_daddr;
-		info.sport = sk->__sk_common.skc_num;
-		u16 dport = sk->__sk_common.skc_dport;
-		info.dport = ntohs(dport);
         info.new_state = new_state;
 
     	ca_state.perf_submit(ctx, &info, sizeof(info));
@@ -110,10 +87,6 @@ void trace_recalc_ssthresh(struct pt_regs *ctx, struct sock *sk) {
 		struct ca_ssthresh_info info = {};
 		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
-		info.daddr = sk->__sk_common.skc_daddr;
-		info.sport = sk->__sk_common.skc_num;
-		u16 dport = sk->__sk_common.skc_dport;
-		info.dport = ntohs(dport);
 
 		u32 retval = regs_return_value(ctx);
 		info.ssthresh = retval;
@@ -127,10 +100,6 @@ void trace_cwnd_event(struct pt_regs *ctx, struct sock *sk, enum tcp_ca_event ev
 		struct cwnd_event_info info = {};
 		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
-		info.daddr = sk->__sk_common.skc_daddr;
-		info.sport = sk->__sk_common.skc_num;
-		u16 dport = sk->__sk_common.skc_dport;
-		info.dport = ntohs(dport);
 
 		info.event_type = event;
 		cwnd_event.perf_submit(ctx, &info, sizeof(info));
@@ -166,10 +135,6 @@ void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked
 		struct cwnd_info info = {};
 		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
-		info.daddr = sk->__sk_common.skc_daddr;
-		info.sport = sk->__sk_common.skc_num;
-		u16 dport = sk->__sk_common.skc_dport;
-		info.dport = ntohs(dport);
 
 		info.snd_cwnd = calc_new_cwnd(ctx, tp, w, acked);
 		if (tp->snd_cwnd != info.snd_cwnd)
@@ -184,12 +149,15 @@ void trace_slow_start(struct pt_regs *ctx, struct tcp_sock *tp) {
 		struct cwnd_info info = {};
 		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
-		info.daddr = sk->__sk_common.skc_daddr;
-		info.sport = sk->__sk_common.skc_num;
-		u16 dport = sk->__sk_common.skc_dport;
-		info.dport = ntohs(dport);
 
 		info.snd_cwnd = tp->snd_cwnd;
 		cwnd_change.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+void trace_fastretrans_alert(struct pt_regs *ctx, struct sock *sk) {
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct inet_connection_sock *icsk = inet_csk(sk);
 	}
 }

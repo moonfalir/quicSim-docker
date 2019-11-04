@@ -16,6 +16,7 @@ b.attach_kretprobe(event="bictcp_recalc_ssthresh", fn_name="trace_recalc_ssthres
 b.attach_kprobe(event="bictcp_cwnd_event", fn_name="trace_cwnd_event")
 b.attach_kprobe(event="tcp_cong_avoid_ai", fn_name="trace_cong_avoid")
 b.attach_kretprobe(event="tcp_slow_start", fn_name="trace_slow_start")
+b.attach_kprobe(event="tcp_fastretrans_alert", fn_name="trace_fastretrans_alert")
 qlog = {
 	"qlog_version": "draft-01",
 	"traces": [
@@ -78,8 +79,7 @@ reference_time_s = -1
 
 def print_tcp_event(cpu, data, size):
 	event = b["tcp_events"].event(data)
-	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
-	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr))
 	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
 		global reference_time_s
 		if reference_time_s == -1:
@@ -118,8 +118,7 @@ def print_tcp_event(cpu, data, size):
 def print_ca_state(cpu, data, size):
 	global ca_states
 	event = b["ca_state"].event(data)
-	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
-	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr))
 	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
 		global reference_time_s
 		if reference_time_s == -1:
@@ -155,8 +154,7 @@ def print_ca_state(cpu, data, size):
 
 def print_ssthresh_event(cpu, data, size):
 	event = b["ssthresh_event"].event(data)
-	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
-	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr))
 	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
 		global reference_time_s
 		if reference_time_s == -1:
@@ -193,8 +191,7 @@ def print_ssthresh_event(cpu, data, size):
 def print_cwnd_event(cpu, data, size):
 	global cwnd_event_types
 	event = b["cwnd_event"].event(data)
-	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
-	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr))
 	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
 		global reference_time_s
 		if reference_time_s == -1:
@@ -230,8 +227,7 @@ def print_cwnd_event(cpu, data, size):
 
 def print_cwnd_change(cpu, data, size):
 	event = b["cwnd_change"].event(data)
-	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
-	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr))
 	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
 		global reference_time_s
 		if reference_time_s == -1:
@@ -280,6 +276,6 @@ while 1:
     try:
         b.perf_buffer_poll()
     except KeyboardInterrupt:
-		with open('/scripts/' + str(ti.time()) + '.qlog', 'w') as f:
-			f.write(json.dumps(qlog))
+		#with open('/scripts/' + str(ti.time()) + '.qlog', 'w') as f:
+		#	f.write(json.dumps(qlog))
 		exit()
