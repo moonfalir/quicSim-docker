@@ -38,8 +38,13 @@ class Simple_p2p:
                                dimage=client_image + ":latest", 
                                volumes=[logdir + '/logs/client:/logs', '/sys/kernel/debug:/sys/kernel/debug:ro', logdir + '/bccscripts:/scripts'])
 
+        info('*** Adding switch\n')
+        s1 = net.addSwitch('s1')
+        s2 = net.addSwitch('s2')
         info('*** Creating links\n')
-        net.addLink(server, client, cls=TCLink, delay=sim_args.delay, bw=sim_args.bandwidth, max_queue_size=sim_args.queue)
+        net.addLink(s1, s2, cls=TCLink, delay=sim_args.delay, bw=sim_args.bandwidth, max_queue_size=sim_args.queue)
+        net.addLink(s1, client)
+        net.addLink(s2, server)
         info('*** Starting network\n')
         net.start()
         client.cmd("tcpdump -i client-eth0 -w /scripts/test.pcap &")
