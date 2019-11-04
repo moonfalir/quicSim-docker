@@ -28,3 +28,8 @@ WORKDIR /bcc/build
 RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr && make && make install
 
 COPY bccscripts /bccscripts
+
+# copy run script and run it
+COPY run_endpoint.sh .
+RUN chmod +x run_endpoint.sh
+ENTRYPOINT [ "./run_endpoint.sh" ]

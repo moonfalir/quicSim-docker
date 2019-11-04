@@ -12,10 +12,10 @@ import ctypes
 b = BPF(src_file="ebpf_probes.c")
 #b.attach_kprobe(event="tcp_rcv_established", fn_name="trace_rcv_established")
 b.attach_kprobe(event="bictcp_state", fn_name="trace_cubictcp_state")
-b.attach_kretprobe(event="bictcp_recalc_ssthresh", fn_name="trace_recalc_ssthresh", maxactive=24)
+b.attach_kretprobe(event="bictcp_recalc_ssthresh", fn_name="trace_recalc_ssthresh")
 b.attach_kprobe(event="bictcp_cwnd_event", fn_name="trace_cwnd_event")
 b.attach_kprobe(event="tcp_cong_avoid_ai", fn_name="trace_cong_avoid")
-b.attach_kretprobe(event="tcp_slow_start", fn_name="trace_slow_start", maxactive=24)
+b.attach_kretprobe(event="tcp_slow_start", fn_name="trace_slow_start")
 qlog = {
 	"qlog_version": "draft-01",
 	"traces": [
@@ -80,7 +80,7 @@ def print_tcp_event(cpu, data, size):
 	event = b["tcp_events"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
 	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
-	if sender.__contains__("10.0.0.252"):
+	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
 		global reference_time_s
 		if reference_time_s == -1:
 			reference_time_s = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
@@ -97,7 +97,7 @@ def print_tcp_event(cpu, data, size):
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
-	if sender.__contains__("10.0.0.251"):
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		global reference_time_c
 		if reference_time_c == -1:
 			reference_time_c = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
@@ -120,7 +120,7 @@ def print_ca_state(cpu, data, size):
 	event = b["ca_state"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
 	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
-	if sender.__contains__("10.0.0.252"):
+	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
 		global reference_time_s
 		if reference_time_s == -1:
 			reference_time_s = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
@@ -136,7 +136,7 @@ def print_ca_state(cpu, data, size):
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
-	if sender.__contains__("10.0.0.251"):
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		global reference_time_c
 		if reference_time_c == -1:
 			reference_time_c = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
@@ -157,7 +157,7 @@ def print_ssthresh_event(cpu, data, size):
 	event = b["ssthresh_event"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
 	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
-	if sender.__contains__("10.0.0.252"):
+	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
 		global reference_time_s
 		if reference_time_s == -1:
 			reference_time_s = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
@@ -173,7 +173,7 @@ def print_ssthresh_event(cpu, data, size):
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
-	if sender.__contains__("10.0.0.251"):
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		global reference_time_c
 		if reference_time_c == -1:
 			reference_time_c = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
@@ -195,7 +195,7 @@ def print_cwnd_event(cpu, data, size):
 	event = b["cwnd_event"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
 	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
-	if sender.__contains__("10.0.0.252"):
+	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
 		global reference_time_s
 		if reference_time_s == -1:
 			reference_time_s = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
@@ -211,7 +211,7 @@ def print_cwnd_event(cpu, data, size):
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
-	if sender.__contains__("10.0.0.251"):
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		global reference_time_c
 		if reference_time_c == -1:
 			reference_time_c = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
@@ -232,7 +232,7 @@ def print_cwnd_change(cpu, data, size):
 	event = b["cwnd_change"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr)) + ":" + str(event.sport)
 	receiver = inet_ntop(AF_INET, pack('I', event.daddr)) + ":" + str(event.dport)
-	if sender.__contains__("10.0.0.252"):
+	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
 		global reference_time_s
 		if reference_time_s == -1:
 			reference_time_s = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
@@ -248,7 +248,7 @@ def print_cwnd_change(cpu, data, size):
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
-	if sender.__contains__("10.0.0.251"):
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		global reference_time_c
 		if reference_time_c == -1:
 			reference_time_c = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
