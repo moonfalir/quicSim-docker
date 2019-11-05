@@ -41,6 +41,9 @@ struct cwnd_info {
     u64 timestamp;
 	u32 snd_cwnd;
 	u32 pkts_in_flight;
+	u32 min_rtt;
+	u32 smoothed_rtt;
+	u32 latest_rtt;
 };
 
 struct loss_info {
@@ -55,7 +58,6 @@ BPF_PERF_OUTPUT(ssthresh_event);
 BPF_PERF_OUTPUT(cwnd_event);
 BPF_PERF_OUTPUT(cwnd_change);
 BPF_PERF_OUTPUT(loss_event);
-
 
 void trace_rcv_established(struct pt_regs *ctx, struct sock *sk)
 {
@@ -144,6 +146,9 @@ void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked
 		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
 
+		info.min_rtt = tp->rtt_min.s[0].v;
+		info.smoothed_rtt = tp->srtt_us >> 3;
+		info.latest_rtt = tp->rack.rtt_us;
 		info.snd_cwnd = calc_new_cwnd(ctx, tp, w, acked);
 		if (acked <= tp->packets_out)
 			info.pkts_in_flight = tp->packets_out - acked;
@@ -163,6 +168,9 @@ void trace_slow_start(struct pt_regs *ctx, struct tcp_sock *tp) {
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
 
 		info.snd_cwnd = tp->snd_cwnd;
+		info.min_rtt = tp->rtt_min.s[0].v;
+		info.smoothed_rtt = tp->srtt_us >> 3;
+		info.latest_rtt = tp->rack.rtt_us;
 		u32 acked = regs_return_value(ctx);
 		if (acked <= tp->packets_out)
 			info.pkts_in_flight = tp->packets_out - acked;

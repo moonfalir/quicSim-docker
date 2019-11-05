@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from __future__ import print_function
+from __future__ import print_function, division
 from bcc import BPF
 from socket import inet_ntop, AF_INET
 from struct import pack
@@ -241,7 +241,10 @@ def print_cwnd_change(cpu, data, size):
 		output_arr.append(
 			{
 				"cwnd": str(event.snd_cwnd),
-				"packets_in_flight": str(event.pkts_in_flight)
+				"packets_in_flight": str(event.pkts_in_flight),
+				"min_rtt": "%.2f" % (event.min_rtt / 1000),
+				"smoothed_rtt": "%.2f" % (event.smoothed_rtt / 1000),
+				"latest_rtt": "%.2f" % (event.latest_rtt / 1000)
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
@@ -258,7 +261,10 @@ def print_cwnd_change(cpu, data, size):
 		output_arr.append(
 			{
 				"cwnd": str(event.snd_cwnd),
-				"packets_in_flight": str(event.pkts_in_flight)
+				"packets_in_flight": str(event.pkts_in_flight),
+				"min_rtt": "%.2f" % (event.min_rtt / 1000.0),
+				"smoothed_rtt": "%.2f" % (event.smoothed_rtt / 1000),
+				"latest_rtt": "%.2f" % (event.latest_rtt / 1000)
 			}
 		)
 		qlog["traces"][1]["events"].append(output_arr)
@@ -315,6 +321,6 @@ while 1:
     try:
         b.perf_buffer_poll()
     except KeyboardInterrupt:
-		with open('/scripts/' + str(ti.time()) + '.qlog', 'w') as f:
-			f.write(json.dumps(qlog))
+		#with open('/scripts/' + str(ti.time()) + '.qlog', 'w') as f:
+		#	f.write(json.dumps(qlog))
 		exit()
