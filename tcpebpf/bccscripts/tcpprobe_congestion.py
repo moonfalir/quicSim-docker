@@ -240,7 +240,8 @@ def print_cwnd_change(cpu, data, size):
 		output_arr.append("metrics_updated")
 		output_arr.append(
 			{
-				"cwnd": str(event.snd_cwnd)
+				"cwnd": str(event.snd_cwnd),
+				"packets_in_flight": str(event.pkts_in_flight)
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
@@ -256,7 +257,8 @@ def print_cwnd_change(cpu, data, size):
 		output_arr.append("metrics_updated")
 		output_arr.append(
 			{
-				"cwnd": str(event.snd_cwnd)
+				"cwnd": str(event.snd_cwnd),
+				"packets_in_flight": str(event.pkts_in_flight)
 			}
 		)
 		qlog["traces"][1]["events"].append(output_arr)
@@ -274,13 +276,12 @@ def print_loss_event(cpu, data, size):
 		output_arr = []
 		output_arr.append("%.6f" % (abs(time) * 1000))
 		output_arr.append("recovery")
-		output_arr.append("metrics_updated")
+		output_arr.append("packet_lost")
 		output_arr.append(
 			{
 				"seq_lost": str(event.loss_seq)
 			}
 		)
-		print(output_arr)
 		qlog["traces"][0]["events"].append(output_arr)
 	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		global reference_time_c
@@ -314,6 +315,6 @@ while 1:
     try:
         b.perf_buffer_poll()
     except KeyboardInterrupt:
-		#with open('/scripts/' + str(ti.time()) + '.qlog', 'w') as f:
-		#	f.write(json.dumps(qlog))
+		with open('/scripts/' + str(ti.time()) + '.qlog', 'w') as f:
+			f.write(json.dumps(qlog))
 		exit()

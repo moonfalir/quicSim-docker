@@ -40,6 +40,7 @@ struct cwnd_info {
 	u32 saddr;
     u64 timestamp;
 	u32 snd_cwnd;
+	u32 pkts_in_flight;
 };
 
 struct loss_info {
@@ -144,6 +145,10 @@ void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
 
 		info.snd_cwnd = calc_new_cwnd(ctx, tp, w, acked);
+		if (acked <= tp->packets_out)
+			info.pkts_in_flight = tp->packets_out - acked;
+		else
+			info.pkts_in_flight = 0;
 		if (tp->snd_cwnd != info.snd_cwnd)
 			cwnd_change.perf_submit(ctx, &info, sizeof(info));
 	}
@@ -158,6 +163,11 @@ void trace_slow_start(struct pt_regs *ctx, struct tcp_sock *tp) {
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
 
 		info.snd_cwnd = tp->snd_cwnd;
+		u32 acked = regs_return_value(ctx);
+		if (acked <= tp->packets_out)
+			info.pkts_in_flight = tp->packets_out - acked;
+		else
+			info.pkts_in_flight = 0;
 		cwnd_change.perf_submit(ctx, &info, sizeof(info));
 	}
 }
