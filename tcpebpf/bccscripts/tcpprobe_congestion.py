@@ -16,7 +16,7 @@ b.attach_kretprobe(event="bictcp_recalc_ssthresh", fn_name="trace_recalc_ssthres
 b.attach_kprobe(event="bictcp_cwnd_event", fn_name="trace_cwnd_event")
 b.attach_kprobe(event="tcp_cong_avoid_ai", fn_name="trace_cong_avoid")
 b.attach_kretprobe(event="tcp_slow_start", fn_name="trace_slow_start")
-b.attach_kprobe(event="tcp_fastretrans_alert", fn_name="trace_fastretrans_alert")
+b.attach_kprobe(event="tcp_enter_loss", fn_name="trace_enter_loss")
 qlog = {
 	"qlog_version": "draft-01",
 	"traces": [
@@ -262,6 +262,43 @@ def print_cwnd_change(cpu, data, size):
 		qlog["traces"][1]["events"].append(output_arr)
 
 
+def print_loss_event(cpu, data, size):
+	event = b["loss_event"].event(data)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr))
+	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
+		global reference_time_s
+		if reference_time_s == -1:
+			reference_time_s = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
+			qlog["traces"][0]["common_fields"]["reference_time"] = reference_time_s
+		time = reference_time_s - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("metrics_updated")
+		output_arr.append(
+			{
+				"seq_lost": str(event.loss_seq)
+			}
+		)
+		print(output_arr)
+		qlog["traces"][0]["events"].append(output_arr)
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
+		global reference_time_c
+		if reference_time_c == -1:
+			reference_time_c = start_time + (ctypes.c_float(event.timestamp).value / 1000000000)
+			qlog["traces"][1]["common_fields"]["reference_time"] = reference_time_c
+		time = reference_time_c - (start_time + (ctypes.c_float(event.timestamp).value / 1000000000))
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("metrics_updated")
+		output_arr.append(
+			{
+				"seq_lost": str(event.loss_seq)
+			}
+		)
+		qlog["traces"][1]["events"].append(output_arr)
+
 print("Tracing tcp events ... Hit Ctrl-C to end")
 
 # header
@@ -272,6 +309,7 @@ b["ca_state"].open_perf_buffer(print_ca_state)
 b["ssthresh_event"].open_perf_buffer(print_ssthresh_event)
 b["cwnd_event"].open_perf_buffer(print_cwnd_event)
 b["cwnd_change"].open_perf_buffer(print_cwnd_change)
+b["loss_event"].open_perf_buffer(print_loss_event)
 while 1:
     try:
         b.perf_buffer_poll()

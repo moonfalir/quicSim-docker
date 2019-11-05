@@ -42,11 +42,18 @@ struct cwnd_info {
 	u32 snd_cwnd;
 };
 
+struct loss_info {
+	u32 saddr;
+    u64 timestamp;
+	u32 loss_seq;
+};
+
 BPF_PERF_OUTPUT(tcp_events);
 BPF_PERF_OUTPUT(ca_state);
 BPF_PERF_OUTPUT(ssthresh_event);
 BPF_PERF_OUTPUT(cwnd_event);
 BPF_PERF_OUTPUT(cwnd_change);
+BPF_PERF_OUTPUT(loss_event);
 
 
 void trace_rcv_established(struct pt_regs *ctx, struct sock *sk)
@@ -155,9 +162,16 @@ void trace_slow_start(struct pt_regs *ctx, struct tcp_sock *tp) {
 	}
 }
 
-void trace_fastretrans_alert(struct pt_regs *ctx, struct sock *sk) {
+void trace_enter_loss(struct pt_regs *ctx, struct sock *sk) {
 	u16 family = sk->__sk_common.skc_family;
 	if (family == AF_INET) {
-		struct inet_connection_sock *icsk = inet_csk(sk);
+		struct loss_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
+		const struct tcp_sock *tp = tcp_sk(sk);
+		
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+		info.loss_seq = tp->snd_una;
+
+		loss_event.perf_submit(ctx, &info, sizeof(info));
 	}
 }
