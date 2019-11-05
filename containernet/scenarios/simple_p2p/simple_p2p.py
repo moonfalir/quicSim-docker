@@ -38,7 +38,7 @@ class Simple_p2p:
                                dimage=client_image + ":latest", 
                                volumes=[logdir + '/logs/client:/logs', '/sys/kernel/debug:/sys/kernel/debug:ro', logdir + '/bccscripts:/scripts'])
 
-        info('*** Adding switch\n')
+        info('*** Adding switches\n')
         s1 = net.addSwitch('s1')
         s2 = net.addSwitch('s2')
         info('*** Creating links\n')
