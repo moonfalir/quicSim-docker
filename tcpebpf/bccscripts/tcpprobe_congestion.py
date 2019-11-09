@@ -267,6 +267,6 @@ while 1:
     try:
         b.perf_buffer_poll()
     except KeyboardInterrupt:
-		with open('/scripts/' + str(ti.time()) + '.qlog', 'w') as f:
+		with open('/logs/' + str(ti.time()) + '.qlog', 'w') as f:
 			f.write(json.dumps(qlog))
 		exit()
