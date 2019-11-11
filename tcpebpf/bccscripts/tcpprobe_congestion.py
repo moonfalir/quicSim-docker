@@ -18,6 +18,7 @@ b.attach_kprobe(event="bictcp_cwnd_event", fn_name="trace_cwnd_event")
 b.attach_kprobe(event="tcp_cong_avoid_ai", fn_name="trace_cong_avoid")
 b.attach_kretprobe(event="tcp_slow_start", fn_name="trace_slow_start")
 b.attach_kprobe(event="tcp_enter_loss", fn_name="trace_enter_loss")
+b.attach_kprobe(event="tcp_init_buffer_space", fn_name="trace_init_cong_control")
 
 qlog = {
 	"qlog_version": "draft-01",
@@ -142,7 +143,8 @@ def print_ssthresh_event(cpu, data, size):
 		output_arr.append("metrics_updated")
 		output_arr.append(
 			{
-				"ssthresh": str(event.ssthresh)
+				"ssthresh": str(event.ssthresh),
+				"last_max_cwnd": str(event.last_max_cwnd)
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
@@ -154,7 +156,8 @@ def print_ssthresh_event(cpu, data, size):
 		output_arr.append("metrics_updated")
 		output_arr.append(
 			{
-				"ssthresh": str(event.ssthresh)
+				"ssthresh": str(event.ssthresh),
+				"last_max_cwnd": str(event.last_max_cwnd)
 			}
 		)
 		qlog["traces"][1]["events"].append(output_arr)
@@ -255,6 +258,46 @@ def print_loss_event(cpu, data, size):
 		)
 		qlog["traces"][1]["events"].append(output_arr)
 
+def print_init_cong_control(cpu, data, size):
+	event = b["init_event"].event(data)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr))
+	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
+		time = setTimeInfo(event.timestamp, True)
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("transport")
+		output_arr.append("parameters_set")
+		output_arr.append(
+			{
+				"begin_of_round": str(event.round_start),
+				"end_seq_round": str(event.end_seq),
+				"min_rtt_curr_round": str(event.curr_rtt),
+				"samples_needed_curr_rtt": str(event.sample_cnt),
+				"initial_ssthresh": str(event.ssthresh),
+				"deviation_rtt_ms": "%.2f" % (event.mdev_us / 1000),
+				"intial_RTO": str(event.icsk_rto)
+			}
+		)
+		qlog["traces"][0]["events"].append(output_arr)
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
+		time = setTimeInfo(event.timestamp, False)
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("transport")
+		output_arr.append("parameters_set")
+		output_arr.append(
+			{
+				"begin_of_round": str(event.round_start),
+				"end_seq_round": str(event.end_seq),
+				"min_rtt_curr_round": str(event.curr_rtt),
+				"samples_needed_curr_rtt": str(event.sample_cnt),
+				"initial_ssthresh": str(event.ssthresh),
+				"deviation_rtt_ms": "%.2f" % (event.mdev_us / 1000),
+				"intial_RTO": str(event.icsk_rto)
+			}
+		)
+		qlog["traces"][1]["events"].append(output_arr)
+
 print("Tracing tcp events ... Hit Ctrl-C to end")
 
 # Bind print functions to ebpf tables 
@@ -263,10 +306,11 @@ b["ssthresh_event"].open_perf_buffer(print_ssthresh_event)
 b["cwnd_event"].open_perf_buffer(print_cwnd_event)
 b["cwnd_change"].open_perf_buffer(print_cwnd_change)
 b["loss_event"].open_perf_buffer(print_loss_event)
+b["init_event"].open_perf_buffer(print_init_cong_control)
 while 1:
     try:
         b.perf_buffer_poll()
     except KeyboardInterrupt:
-		with open('/logs/' + str(ti.time()) + '.qlog', 'w') as f:
-			f.write(json.dumps(qlog))
+		#with open('/logs/' + str(ti.time()) + '.qlog', 'w') as f:
+		#	f.write(json.dumps(qlog))
 		exit()

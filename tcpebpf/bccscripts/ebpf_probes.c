@@ -6,6 +6,28 @@
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
+/* BIC TCP Parameters */
+struct bictcp {
+	u32	cnt;		/* increase cwnd by 1 after ACKs */
+	u32	last_max_cwnd;	/* last maximum snd_cwnd */
+	u32	last_cwnd;	/* the last snd_cwnd */
+	u32	last_time;	/* time when updated last_cwnd */
+	u32	bic_origin_point;/* origin point of bic function */
+	u32	bic_K;		/* time to origin point
+				   from the beginning of the current epoch */
+	u32	delay_min;	/* min delay (msec << 3) */
+	u32	epoch_start;	/* beginning of an epoch */
+	u32	ack_cnt;	/* number of acks */
+	u32	tcp_cwnd;	/* estimated tcp cwnd */
+	u16	unused;
+	u8	sample_cnt;	/* number of samples to decide curr_rtt */
+	u8	found;		/* the exit point is found? */
+	u32	round_start;	/* beginning of each round */
+	u32	end_seq;	/* end_seq of the round */
+	u32	last_ack;	/* last time when the ACK spacing is close */
+	u32	curr_rtt;	/* the minimum rtt of current round */
+};
+
 struct ca_init_info {
     u32 saddr;
     u64 timestamp;
@@ -16,6 +38,7 @@ struct ca_ssthresh_info {
 	u32 saddr;
     u64 timestamp;
 	u32 ssthresh;
+	u32 last_max_cwnd;
 };
 
 struct cwnd_event_info {
@@ -40,6 +63,18 @@ struct loss_info {
 	u32 loss_seq;
 };
 
+struct init_info {
+	u32 saddr;
+    u64 timestamp;
+	u32 round_start;
+	u32 end_seq;
+	u32 curr_rtt;
+	u8 sample_cnt;
+	u32 ssthresh;
+	u32 mdev_us;
+	u32 icsk_rto;
+};
+
 // eBPF tables to output data
 BPF_PERF_OUTPUT(tcp_events);
 BPF_PERF_OUTPUT(ca_state);
@@ -47,6 +82,7 @@ BPF_PERF_OUTPUT(ssthresh_event);
 BPF_PERF_OUTPUT(cwnd_event);
 BPF_PERF_OUTPUT(cwnd_change);
 BPF_PERF_OUTPUT(loss_event);
+BPF_PERF_OUTPUT(init_event);
 
 // Trace cubic TCP state changes
 void trace_cubictcp_state(struct pt_regs *ctx, struct sock *sk, u8 new_state) {
@@ -68,9 +104,11 @@ void trace_recalc_ssthresh(struct pt_regs *ctx, struct sock *sk) {
 		struct ca_ssthresh_info info = {};
 		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
-
+		const struct bictcp *ca = inet_csk_ca(sk);
+		
 		u32 retval = regs_return_value(ctx);
 		info.ssthresh = retval;
+		info.last_max_cwnd = ca->last_max_cwnd;
 		ssthresh_event.perf_submit(ctx, &info, sizeof(info));
 	}
 }
@@ -170,5 +208,30 @@ void trace_enter_loss(struct pt_regs *ctx, struct sock *sk) {
 		info.loss_seq = tp->snd_una;
 
 		loss_event.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+// Trace init congestion control
+void trace_init_cong_control(struct pt_regs *ctx, struct sock *sk) {
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct init_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
+
+		const struct tcp_sock *tp = tcp_sk(sk);
+		const struct bictcp *ca = inet_csk_ca(sk);
+		const struct inet_connection_sock *icsk = inet_csk(sk);
+
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+		info.round_start = ca->round_start;
+		info.end_seq = ca->end_seq;
+		info.curr_rtt = ca->curr_rtt;
+		info.sample_cnt = ca->sample_cnt;
+		info.ssthresh = tp->snd_ssthresh;
+		info.mdev_us = tp->mdev_us;
+		info.icsk_rto = icsk->icsk_rto;
+		
+
+		init_event.perf_submit(ctx, &info, sizeof(info));
 	}
 }
