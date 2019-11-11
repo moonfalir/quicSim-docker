@@ -208,7 +208,11 @@ def print_cwnd_change(cpu, data, size):
 				"packets_in_flight": str(event.pkts_in_flight),
 				"min_rtt": "%.2f" % (event.min_rtt / 1000),
 				"smoothed_rtt": "%.2f" % (event.smoothed_rtt / 1000),
-				"latest_rtt": "%.2f" % (event.latest_rtt / 1000)
+				"latest_rtt": "%.2f" % (event.latest_rtt / 1000),
+				"ca_ack_count": str(event.ack_cnt),
+				"cwnd_inc_after_acks": str(event.cnt),
+				"time_to_origin": str(event.bic_K),
+				"origin_point": str(event.bic_origin_point)
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
@@ -224,7 +228,11 @@ def print_cwnd_change(cpu, data, size):
 				"packets_in_flight": str(event.pkts_in_flight),
 				"min_rtt": "%.2f" % (event.min_rtt / 1000.0),
 				"smoothed_rtt": "%.2f" % (event.smoothed_rtt / 1000),
-				"latest_rtt": "%.2f" % (event.latest_rtt / 1000)
+				"latest_rtt": "%.2f" % (event.latest_rtt / 1000),
+				"ca_ack_count": str(event.ack_cnt),
+				"cwnd_inc_after_acks": str(event.cnt),
+				"time_to_origin": str(event.bic_K),
+				"origin_point": str(event.bic_origin_point)
 			}
 		)
 		qlog["traces"][1]["events"].append(output_arr)
@@ -311,6 +319,6 @@ while 1:
     try:
         b.perf_buffer_poll()
     except KeyboardInterrupt:
-		#with open('/logs/' + str(ti.time()) + '.qlog', 'w') as f:
-		#	f.write(json.dumps(qlog))
+		with open('/logs/' + str(ti.time()) + '.qlog', 'w') as f:
+			f.write(json.dumps(qlog))
 		exit()
