@@ -79,6 +79,12 @@ struct init_info {
 	u32 icsk_rto;
 };
 
+struct flow_ctrl_info {
+	u32 saddr;
+    u64 timestamp;
+	u64 bytes_in_flight;
+};
+
 // eBPF tables to output data
 BPF_PERF_OUTPUT(tcp_events);
 BPF_PERF_OUTPUT(ca_state);
@@ -87,6 +93,7 @@ BPF_PERF_OUTPUT(cwnd_event);
 BPF_PERF_OUTPUT(cwnd_change);
 BPF_PERF_OUTPUT(loss_event);
 BPF_PERF_OUTPUT(init_event);
+BPF_PERF_OUTPUT(fc_event);
 
 // Trace cubic TCP state changes
 void trace_cubictcp_state(struct pt_regs *ctx, struct sock *sk, u8 new_state) {
@@ -242,5 +249,23 @@ void trace_init_cong_control(struct pt_regs *ctx, struct sock *sk) {
 		
 
 		init_event.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+void trace_bytes_in_flight(struct pt_regs *ctx, struct sock *sk) {
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct flow_ctrl_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
+
+		const struct tcp_sock *tp = tcp_sk(sk);
+
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+		if (tp->bytes_sent > tp->bytes_acked)
+			info.bytes_in_flight = tp->bytes_sent - tp->bytes_acked;
+		else
+			info.bytes_in_flight = 0;
+
+		fc_event.perf_submit(ctx, &info, sizeof(info));
 	}
 }
