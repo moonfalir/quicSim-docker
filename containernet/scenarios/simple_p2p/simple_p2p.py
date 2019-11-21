@@ -33,7 +33,6 @@ class Simple_p2p:
         client_vs = [logdir + '/logs/client:/logs']
         if sim_args.k:
             client_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
-        print(client_vs)
         server = net.addDocker('server', ip='10.0.0.251',
                                dimage=server_image + ":latest",
                                volumes=[logdir + '/logs/server:/logs'])

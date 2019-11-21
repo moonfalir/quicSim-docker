@@ -13,8 +13,8 @@ class Droplist:
         p2p_parser.add_argument('--delay', action='store', type=str, required=True, help='One-way delay of network, specify with units.')
         p2p_parser.add_argument('--bandwidth', action='store', type=float, required=True, help='Bandwidth of the link in Mbit/s.')
         p2p_parser.add_argument('--queue', action='store', type=int, required=True, help='Queue size of the queue attached to the link. Specified in packets.')
-        p2p_parser.add_argument('--drops_to_client', action='store', type=str, required=False, help="Index of UDP packets send to the client that need to be dropped")
-        p2p_parser.add_argument('--drops_to_server', action='store', type=str, required=False, help="Index of UDP packets send to the server that need to be dropped")
+        p2p_parser.add_argument('--drops_to_client', action='store', type=str, required=False, help="Index of packets send to the client that need to be dropped")
+        p2p_parser.add_argument('--drops_to_server', action='store', type=str, required=False, help="Index of packets send to the server that need to be dropped")
 
     def run(self, sim_args):
         if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR']):
@@ -45,7 +45,6 @@ class Droplist:
             client_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
         server = net.addDocker('server', ip='10.0.0.251',
                                dimage=server_image + ":latest",
-                               dcmd=server_command,
                                volumes=[logdir + '/logs/server:/logs'])
         client = net.addDocker('client', ip='10.0.0.252', 
                                dimage=client_image + ":latest", 
@@ -57,6 +56,7 @@ class Droplist:
         net.addLink(client, s1, cls=TCLink)
         info('*** Starting network\n')
         net.start()
+        server.cmd(server_command)
         info('\n' + client_command + '\n')
         info(client.cmd(client_command) + "\n")
         # Wait some time to allow server finish writing to log file
