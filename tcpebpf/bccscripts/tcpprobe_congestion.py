@@ -346,10 +346,17 @@ b["cwnd_change"].open_perf_buffer(print_cwnd_change)
 b["loss_event"].open_perf_buffer(print_loss_event)
 b["init_event"].open_perf_buffer(print_init_cong_control)
 b["fc_event"].open_perf_buffer(print_bytes_in_flight)
+
+#timeout of 30 seconds
+timeout = ti.time() + 30*1
 while 1:
-    try:
-        b.perf_buffer_poll()
-    except KeyboardInterrupt:
+	if ti.time() > timeout:
+		with open('/logs/' + str(ti.time()) + '.qlog', 'w') as f:
+			f.write(json.dumps(qlog))
+		exit()
+	try:
+		b.perf_buffer_poll()
+	except KeyboardInterrupt:
 		with open('/logs/' + str(ti.time()) + '.qlog', 'w') as f:
 			f.write(json.dumps(qlog))
 		exit()
