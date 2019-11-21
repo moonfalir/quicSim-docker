@@ -3,6 +3,7 @@ FROM quic-network-simulator-endpoint:latest
 RUN apt-get update && apt-get install -y \
  git \
  python-dev \
+ python3 \
  linux-headers-$(uname -r) \
  clang \
  cmake \
@@ -28,6 +29,8 @@ WORKDIR /bcc/build
 RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr && make && make install
 
 COPY bccscripts /bccscripts
+
+COPY simple_socket /simple_socket
 
 COPY run_min_client.sh run_min_server.sh ./
 RUN chmod +x run_min_client.sh && chmod +x run_min_server.sh
