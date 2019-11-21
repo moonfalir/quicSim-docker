@@ -32,11 +32,10 @@ class Simple_p2p:
         info('*** Adding docker containers\n')
         server = net.addDocker('server', ip='10.0.0.251',
                                dimage=server_image + ":latest",
-                               dcmd=server_command,
                                volumes=[logdir + '/logs/server:/logs'])
         client = net.addDocker('client', ip='10.0.0.252', 
                                dimage=client_image + ":latest", 
-                               volumes=[logdir + '/logs/client:/logs'])
+                               volumes=[logdir + '/logs/client:/logs', '/sys/kernel/debug:/sys/kernel/debug:ro'])
 
         info('*** Adding switches\n')
         s1 = net.addSwitch('s1')
@@ -47,13 +46,10 @@ class Simple_p2p:
         net.addLink(s2, server)
         info('*** Starting network\n')
         net.start()
-        client.cmd("tcpdump -i client-eth0 -w /logs/test.pcap &")
-        sleep(2)
+        server.cmd(server_command)
         info('\n' + client_command + '\n')
         info(client.cmd(client_command) + "\n")
         # Wait some time to allow server finish writing to log file
-        sleep(3)
-        client.cmd("kill $!")
         sleep(3)
         info('*** Stopping network')
         net.stop()

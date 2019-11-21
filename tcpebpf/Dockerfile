@@ -29,6 +29,9 @@ RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr && make && make install
 
 COPY bccscripts /bccscripts
 
+COPY run_min_client.sh run_min_server.sh ./
+RUN chmod +x run_min_client.sh && chmod +x run_min_server.sh
+
 # copy run script and run it
 COPY run_endpoint.sh .
 RUN chmod +x run_endpoint.sh
