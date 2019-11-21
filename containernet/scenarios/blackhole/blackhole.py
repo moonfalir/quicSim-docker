@@ -67,13 +67,15 @@ class Blackhole:
         info('*** Adding controller\n')
         net.addController('c0')
         info('*** Adding docker containers\n')
+        client_vs = [logdir + '/logs/client:/logs']
+        if sim_args.k:
+            client_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
         server = net.addDocker('server', ip='10.0.0.251',
                                dimage=server_image + ":latest",
-                               dcmd=server_command,
                                volumes=[logdir + '/logs/server:/logs'])
         client = net.addDocker('client', ip='10.0.0.252', 
                                dimage=client_image + ":latest", 
-                               volumes=[logdir + '/logs/client:/logs'])
+                               volumes=client_vs)
 
         info('*** Adding switches\n')
         s1 = net.addSwitch('s1')
@@ -84,14 +86,11 @@ class Blackhole:
         net.addLink(s2, server)
         info('*** Starting network\n')
         net.start()
-        client.cmd("tcpdump -i client-eth0 -w /logs/test.pcap &")
-        sleep(2)
+        server.cmd(server_command)
         info('\n' + client_command + '\n')
         self.startTest(client, net, client_command, sim_args)
         # Wait some time to allow server finish writing to log file
         info('Test finished, waiting for server to receive all packets\n')
-        sleep(3)
-        client.cmd("kill $!")
         sleep(3)
         info('*** Stopping network\n')
         net.stop()

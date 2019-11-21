@@ -30,12 +30,16 @@ class Simple_p2p:
         info('*** Adding controller\n')
         net.addController('c0')
         info('*** Adding docker containers\n')
+        client_vs = [logdir + '/logs/client:/logs']
+        if sim_args.k:
+            client_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
+        print(client_vs)
         server = net.addDocker('server', ip='10.0.0.251',
                                dimage=server_image + ":latest",
                                volumes=[logdir + '/logs/server:/logs'])
         client = net.addDocker('client', ip='10.0.0.252', 
                                dimage=client_image + ":latest", 
-                               volumes=[logdir + '/logs/client:/logs', '/sys/kernel/debug:/sys/kernel/debug:ro'])
+                               volumes=client_vs)
 
         info('*** Adding switches\n')
         s1 = net.addSwitch('s1')

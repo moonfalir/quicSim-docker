@@ -9,6 +9,7 @@ subparsers = sim_parser.add_subparsers(dest="scenario")
 
 #Add simple p2p arguments
 sub_parser = subparsers.add_parser('simple_p2p')
+sub_parser.add_argument('-k', action='store_true', help='Flag to add kernel debug volume to container')
 sys.path.append(curdir + '/simple_p2p')
 from simple_p2p import Simple_p2p
 p2p = Simple_p2p()
@@ -16,6 +17,7 @@ p2p.addCLIArguments(sub_parser)
 
 #Add blackhole arguments
 sub_parser = subparsers.add_parser('blackhole')
+sub_parser.add_argument('-k', action='store_true', help='Flag to add kernel debug volume to container')
 sys.path.append(curdir + '/blackhole')
 from blackhole import Blackhole
 blackhole = Blackhole()
@@ -23,6 +25,7 @@ blackhole.addCLIArguments(sub_parser)
 
 #Add droplist arguments
 sub_parser = subparsers.add_parser('droplist')
+sub_parser.add_argument('-k', action='store_true', help='Flag to add kernel debug volume to container')
 sys.path.append(curdir + '/droplist')
 from droplist import Droplist
 droplist = Droplist()
