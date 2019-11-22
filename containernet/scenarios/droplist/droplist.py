@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from mininet.net import Containernet
-from mininet.node import POX
+from mininet.node import POX, OVSController
 from mininet.cli import CLI
 from mininet.link import TCLink, Intf
 from mininet.log import info, setLogLevel
@@ -51,9 +51,11 @@ class Droplist:
                                volumes=client_vs)
         info('*** Adding switch\n')
         s1 = net.addSwitch('s1')
+        s2 = net.addSwitch('s2', controller=OVSController)
         info('*** Creating links\n')
-        net.addLink(server, s1, cls=TCLink, delay=sim_args.delay, bw=sim_args.bandwidth, max_queue_size=sim_args.queue)
-        net.addLink(client, s1, cls=TCLink)
+        net.addLink(s1, s2, cls=TCLink, delay=sim_args.delay, bw=sim_args.bandwidth, max_queue_size=sim_args.queue)
+        net.addLink(s1, client)
+        net.addLink(s2, server)
         info('*** Starting network\n')
         net.start()
         server.cmd(server_command)
