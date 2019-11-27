@@ -7,6 +7,7 @@ from struct import pack
 import time as ti
 import json
 import ctypes
+import sys
 
 # Initialize BPF
 b = BPF(src_file="ebpf_probes.c")
@@ -349,14 +350,18 @@ b["fc_event"].open_perf_buffer(print_bytes_in_flight)
 
 #timeout of 30 seconds
 timeout = ti.time() + 30*1
+if len(sys.argv) == 2:
+	outputfile = sys.argv[1]
+else:
+	outputfile = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
 while 1:
 	if ti.time() > timeout:
-		with open('/logs/' + str(ti.time()) + '.qlog', 'w') as f:
+		with open('/logs/' + outputfile + '.qlog', 'w') as f:
 			f.write(json.dumps(qlog))
 		exit()
 	try:
 		b.perf_buffer_poll()
 	except KeyboardInterrupt:
-		with open('/logs/' + str(ti.time()) + '.qlog', 'w') as f:
+		with open('/logs/' + outputfile + '.qlog', 'w') as f:
 			f.write(json.dumps(qlog))
 		exit()

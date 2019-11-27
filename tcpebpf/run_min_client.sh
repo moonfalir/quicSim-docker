@@ -1,6 +1,12 @@
 #!/bin/bash
 
-python /bccscripts/tcpprobe_congestion.py &
+if [ $# > 0 ]
+then
+    CURTIME=$1
+else
+    CURTIME=$(date +%Y-%m-%d-%H-%M)
+fi
+python /bccscripts/tcpprobe_congestion.py $CURTIME &
 EBPF_PID=$!
 
 sleep 2

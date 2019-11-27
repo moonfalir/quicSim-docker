@@ -14,7 +14,7 @@ class Simple_p2p:
         p2p_parser.add_argument('--bandwidth', action='store', type=float, required=True, help='Bandwidth of the link in Mbit/s.')
         p2p_parser.add_argument('--queue', action='store', type=int, required=True, help='Queue size of the queue attached to the link. Specified in packets.')
 
-    def run(self, sim_args):
+    def run(self, sim_args, curtime):
         if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR']):
             # TODO show help
             exit(1)
@@ -49,9 +49,9 @@ class Simple_p2p:
         net.addLink(s2, server)
         info('*** Starting network\n')
         net.start()
-        server.cmd(server_command)
-        info('\n' + client_command + '\n')
-        info(client.cmd(client_command) + "\n")
+        server.cmd(server_command + " " + curtime)
+        info('\n' + client_command + " " + curtime + '\n')
+        info(client.cmd(client_command + " " + curtime) + "\n")
         # Wait some time to allow server finish writing to log file
         sleep(3)
         info('*** Stopping network')

@@ -51,7 +51,7 @@ class Blackhole:
         # wait till quic client is finished before continueing
         client.cmd('wait ' + pid)
 
-    def run(self, sim_args):
+    def run(self, sim_args, curtime):
         if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR']):
             # TODO show help
             exit(1)
@@ -86,9 +86,9 @@ class Blackhole:
         net.addLink(s2, server)
         info('*** Starting network\n')
         net.start()
-        server.cmd(server_command)
-        info('\n' + client_command + '\n')
-        self.startTest(client, net, client_command, sim_args)
+        server.cmd(server_command + " " + curtime)
+        info('\n' + client_command + " " + curtime + '\n')
+        self.startTest(client, net, client_command + " " + curtime, sim_args)
         # Wait some time to allow server finish writing to log file
         info('Test finished, waiting for server to receive all packets\n')
         sleep(3)

@@ -16,7 +16,7 @@ class Droplist:
         p2p_parser.add_argument('--drops_to_client', action='store', type=str, required=False, help="Index of packets send to the client that need to be dropped")
         p2p_parser.add_argument('--drops_to_server', action='store', type=str, required=False, help="Index of packets send to the server that need to be dropped")
 
-    def run(self, sim_args):
+    def run(self, sim_args, curtime):
         if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR']):
             # TODO show help
             exit(1)
@@ -58,9 +58,9 @@ class Droplist:
         net.addLink(s2, server)
         info('*** Starting network\n')
         net.start()
-        server.cmd(server_command)
-        info('\n' + client_command + '\n')
-        info(client.cmd(client_command) + "\n")
+        server.cmd(server_command + " " + curtime)
+        info('\n' + client_command + " " + curtime + '\n')
+        info(client.cmd(client_command + " " + curtime) + "\n")
         # Wait some time to allow server finish writing to log file
         sleep(3)
         info('*** Stopping network')

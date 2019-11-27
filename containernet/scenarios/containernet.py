@@ -2,6 +2,7 @@
 from argparse import ArgumentParser
 import sys
 import os
+import time as ti
 
 curdir = os.path.dirname(os.path.realpath(__file__))
 sim_parser = ArgumentParser(description='Run mininet network simulator')
@@ -37,15 +38,18 @@ available_scenarios = ['simple_p2p']
 
 def run_simple_p2p():
     p2p = Simple_p2p()
-    p2p.run(sim_args)
+    curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
+    p2p.run(sim_args, curtime)
 
 def run_blackhole():
     blackhole = Blackhole()
-    blackhole.run(sim_args)
+    curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
+    blackhole.run(sim_args, curtime)
 
 def run_droplist():
     droplist = Droplist()
-    droplist.run(sim_args)
+    curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
+    droplist.run(sim_args, curtime)
 
 switch = {
     'simple_p2p': run_simple_p2p,
