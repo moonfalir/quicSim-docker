@@ -7,10 +7,20 @@
 # - ROLE contains the role of this execution context, client or server
 # - SERVER_PARAMS contains user-supplied command line parameters
 # - CLIENT_PARAMS contains user-supplied command line parameters
+# - CURTIME contains the timestamp of the start of the simulation
 
 if [ "$ROLE" == "client" ]; then
     /wait-for-it.sh sim:57832 -s -t 30    
-    iperf -n 5000000 -c 193.167.100.100 5001
+    python /bccscripts/tcpprobe_congestion.py $CURTIME &
+    EBPF_PID=$!
+
+    sleep 2
+
+    python3 /simple_socket/h0_client.py $CLIENT_PARAMS
+
+    wait $EBPF_PID
 elif [ "$ROLE" == "server" ]; then
-    iperf -s
+    tcpdump -i eth0 -w /logs/$CURTIME.pcap &
+
+    python3 /simple_socket/h0_server.py $SERVER_PARAMS
 fi
