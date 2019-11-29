@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# The following variables are available for use:
+# - ROLE contains the role of this execution context, client or server
+# - SERVER_PARAMS contains user-supplied command line parameters
+# - CLIENT_PARAMS contains user-supplied command line parameters
+
+if [ "$ROLE" == "client" ]; then 
+    ./picoquicdemo $CLIENT_PARAMS
+    ./picolog_t -f qlog /logs/clientpico_qns.log > /logs/clientpico_qns.qlog 
+    sleep 3
+elif [ "$ROLE" == "server" ]; then
+    ./picoquicdemo $SERVER_PARAMS
+    ./picolog_t -f qlog /logs/serverpico_qns.log > /logs/serverpico_qns.qlog
+    sleep 3
+fi
