@@ -11,25 +11,17 @@ RUN apt-get update && apt-get install -y \
  libscope-guard-perl \
  net-tools \
  iputils-ping \
- iproute2
+ iproute2 \
+ libssl-dev
 
-# install openssl
-RUN git clone https://github.com/openssl/openssl
-
-WORKDIR /openssl
-
-RUN ./config enable-tls1_3 && make && make test && make install
-
-WORKDIR /
-
-# install picotls
+## install picotls
 RUN git clone https://github.com/h2o/picotls
 
 WORKDIR /picotls
 
 RUN git submodule init && git submodule update
 
-COPY CMakeLists.txt /picotls
+#COPY CMakeLists.txt /picotls
 
 RUN cmake . && make && make check
 
