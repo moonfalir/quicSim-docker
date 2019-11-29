@@ -37,19 +37,22 @@ sim_args = sim_parser.parse_args()
 available_scenarios = ['simple_p2p']
 
 def run_simple_p2p():
+    entrypoint = "./entrypoint_min.sh"
     p2p = Simple_p2p()
     curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
-    p2p.run(sim_args, curtime)
+    p2p.run(sim_args, curtime, entrypoint)
 
 def run_blackhole():
+    entrypoint = "./entrypoint_min.sh"
     blackhole = Blackhole()
     curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
-    blackhole.run(sim_args, curtime)
+    blackhole.run(sim_args, curtime, entrypoint)
 
 def run_droplist():
+    entrypoint = "./entrypoint_min.sh"
     droplist = Droplist()
     curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
-    droplist.run(sim_args, curtime)
+    droplist.run(sim_args, curtime, entrypoint)
 
 switch = {
     'simple_p2p': run_simple_p2p,

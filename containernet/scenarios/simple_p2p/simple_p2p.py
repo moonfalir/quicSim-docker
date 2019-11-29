@@ -14,14 +14,14 @@ class Simple_p2p:
         p2p_parser.add_argument('--bandwidth', action='store', type=float, required=True, help='Bandwidth of the link in Mbit/s.')
         p2p_parser.add_argument('--queue', action='store', type=int, required=True, help='Queue size of the queue attached to the link. Specified in packets.')
 
-    def run(self, sim_args, curtime):
+    def run(self, sim_args, curtime, entrypoint):
         if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR']):
             # TODO show help
             exit(1)
         client_image = environ['CLIENT']
-        client_command = environ['CLIENT_PARAMS']
+        client_params = environ['CLIENT_PARAMS']
         server_image = environ['SERVER']
-        server_command = environ['SERVER_PARAMS']
+        server_params = environ['SERVER_PARAMS']
         logdir = environ['LOGDIR']
 
         setLogLevel('info')
@@ -33,10 +33,14 @@ class Simple_p2p:
         client_vs = [logdir + '/logs/client:/logs']
         if sim_args.k:
             client_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
+            server_params += " " + curtime
+            client_params += " " + curtime
         server = net.addDocker('server', ip='10.0.0.251',
+                               environment={"ROLE": "server", "SERVER_PARAMS": server_params},
                                dimage=server_image + ":latest",
                                volumes=[logdir + '/logs/server:/logs'])
         client = net.addDocker('client', ip='10.0.0.252', 
+                               environment={"ROLE": "client", "CLIENT_PARAMS": client_params},
                                dimage=client_image + ":latest", 
                                volumes=client_vs)
 
@@ -49,9 +53,9 @@ class Simple_p2p:
         net.addLink(s2, server)
         info('*** Starting network\n')
         net.start()
-        server.cmd(server_command + " " + curtime)
-        info('\n' + client_command + " " + curtime + '\n')
-        info(client.cmd(client_command + " " + curtime) + "\n")
+        server.cmd(entrypoint + " &" )
+        info('\n' + entrypoint + '\n')
+        info(client.cmd(entrypoint) + "\n")
         # Wait some time to allow server finish writing to log file
         sleep(3)
         info('*** Stopping network')
