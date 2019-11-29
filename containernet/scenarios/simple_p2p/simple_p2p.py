@@ -14,7 +14,7 @@ class Simple_p2p:
         p2p_parser.add_argument('--bandwidth', action='store', type=float, required=True, help='Bandwidth of the link in Mbit/s.')
         p2p_parser.add_argument('--queue', action='store', type=int, required=True, help='Queue size of the queue attached to the link. Specified in packets.')
 
-    def run(self, sim_args):
+    def run(self, sim_args, curtime):
         if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR']):
             # TODO show help
             exit(1)
@@ -30,21 +30,29 @@ class Simple_p2p:
         info('*** Adding controller\n')
         net.addController('c0')
         info('*** Adding docker containers\n')
+        client_vs = [logdir + '/logs/client:/logs']
+        if sim_args.k:
+            client_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
         server = net.addDocker('server', ip='10.0.0.251',
                                dimage=server_image + ":latest",
-                               dcmd=server_command,
                                volumes=[logdir + '/logs/server:/logs'])
         client = net.addDocker('client', ip='10.0.0.252', 
                                dimage=client_image + ":latest", 
-                               volumes=[logdir + '/logs/client:/logs'])
+                               volumes=client_vs)
 
+        info('*** Adding switches\n')
+        s1 = net.addSwitch('s1')
+        s2 = net.addSwitch('s2')
         info('*** Creating links\n')
-        net.addLink(server, client, cls=TCLink, delay=sim_args.delay, bw=sim_args.bandwidth, max_queue_size=sim_args.queue)
+        net.addLink(s1, s2, cls=TCLink, delay=sim_args.delay, bw=sim_args.bandwidth, max_queue_size=sim_args.queue)
+        net.addLink(s1, client)
+        net.addLink(s2, server)
         info('*** Starting network\n')
         net.start()
-        info('\n' + client_command + '\n')
-        info(client.cmd(client_command) + "\n")
+        server.cmd(server_command + " " + curtime)
+        info('\n' + client_command + " " + curtime + '\n')
+        info(client.cmd(client_command + " " + curtime) + "\n")
         # Wait some time to allow server finish writing to log file
-        sleep(5)
+        sleep(3)
         info('*** Stopping network')
         net.stop()

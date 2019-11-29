@@ -2,6 +2,7 @@
 from argparse import ArgumentParser
 import sys
 import os
+import time as ti
 
 curdir = os.path.dirname(os.path.realpath(__file__))
 sim_parser = ArgumentParser(description='Run mininet network simulator')
@@ -9,6 +10,7 @@ subparsers = sim_parser.add_subparsers(dest="scenario")
 
 #Add simple p2p arguments
 sub_parser = subparsers.add_parser('simple_p2p')
+sub_parser.add_argument('-k', action='store_true', help='Flag to add kernel debug volume to container')
 sys.path.append(curdir + '/simple_p2p')
 from simple_p2p import Simple_p2p
 p2p = Simple_p2p()
@@ -16,6 +18,7 @@ p2p.addCLIArguments(sub_parser)
 
 #Add blackhole arguments
 sub_parser = subparsers.add_parser('blackhole')
+sub_parser.add_argument('-k', action='store_true', help='Flag to add kernel debug volume to container')
 sys.path.append(curdir + '/blackhole')
 from blackhole import Blackhole
 blackhole = Blackhole()
@@ -23,6 +26,7 @@ blackhole.addCLIArguments(sub_parser)
 
 #Add droplist arguments
 sub_parser = subparsers.add_parser('droplist')
+sub_parser.add_argument('-k', action='store_true', help='Flag to add kernel debug volume to container')
 sys.path.append(curdir + '/droplist')
 from droplist import Droplist
 droplist = Droplist()
@@ -34,15 +38,18 @@ available_scenarios = ['simple_p2p']
 
 def run_simple_p2p():
     p2p = Simple_p2p()
-    p2p.run(sim_args)
+    curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
+    p2p.run(sim_args, curtime)
 
 def run_blackhole():
     blackhole = Blackhole()
-    blackhole.run(sim_args)
+    curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
+    blackhole.run(sim_args, curtime)
 
 def run_droplist():
     droplist = Droplist()
-    droplist.run(sim_args)
+    curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
+    droplist.run(sim_args, curtime)
 
 switch = {
     'simple_p2p': run_simple_p2p,

@@ -18,7 +18,6 @@ cp -a /containernet/poxcontrollers/. /pox/pox/forwarding/
 echo "Welcome to Containernet running within a Docker container ..."
 
 if [[ $# -eq 0 ]]; then
-    # TODO add scenario picker
     python ./scenarios/containernet.py $SCENARIO
 else
     exec $*
