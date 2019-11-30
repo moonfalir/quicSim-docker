@@ -32,8 +32,8 @@ COPY bccscripts /bccscripts
 
 COPY simple_socket /simple_socket
 
-COPY run_min_client.sh run_min_server.sh ./
-RUN chmod +x run_min_client.sh && chmod +x run_min_server.sh
+COPY entrypoint_min.sh .
+RUN chmod +x entrypoint_min.sh
 
 # copy run script and run it
 COPY run_endpoint.sh .

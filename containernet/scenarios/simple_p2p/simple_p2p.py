@@ -33,8 +33,8 @@ class Simple_p2p:
         client_vs = [logdir + '/logs/client:/logs']
         if sim_args.k:
             client_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
-            server_params += " " + curtime
-            client_params += " " + curtime
+            server_params = curtime
+            client_params = curtime
         server = net.addDocker('server', ip='10.0.0.251',
                                environment={"ROLE": "server", "SERVER_PARAMS": server_params},
                                dimage=server_image + ":latest",
