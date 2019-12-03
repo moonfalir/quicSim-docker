@@ -3,7 +3,7 @@ FROM quic-network-simulator-endpoint:latest
 # download and build your QUIC implementation
 RUN apt-get update && apt-get install -y \
  git \ 
- gcc-7 \ 
+ gcc \ 
  g++ \  
  make \
  libev-dev \
