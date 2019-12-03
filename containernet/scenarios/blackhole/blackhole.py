@@ -52,7 +52,7 @@ class Blackhole:
         client.cmd('wait ' + pid)
 
     def run(self, sim_args, curtime, entrypoint):
-        if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR']):
+        if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR', 'CL_COMMIT', 'SV_COMMIT']):
             # TODO show help
             exit(1)
         client_image = environ['CLIENT']
@@ -60,6 +60,8 @@ class Blackhole:
         server_image = environ['SERVER']
         server_params = environ['SERVER_PARAMS']
         logdir = environ['LOGDIR']
+        clcommit = environ['CL_COMMIT']
+        svcommit = environ['SV_COMMIT']
 
         setLogLevel('info')
 
@@ -73,11 +75,11 @@ class Blackhole:
             server_params = curtime
             client_params = curtime
         server = net.addDocker('server', ip='10.0.0.251',
-                               environment={"ROLE": "server", "SERVER_PARAMS": server_params},
+                               environment={"ROLE": "server", "SERVER_PARAMS": server_params, "COMMIT": svcommit},
                                dimage=server_image + ":latest",
                                volumes=[logdir + '/logs/server:/logs'])
         client = net.addDocker('client', ip='10.0.0.252',
-                               environment={"ROLE": "client", "CLIENT_PARAMS": client_params},
+                               environment={"ROLE": "client", "CLIENT_PARAMS": client_params, "COMMIT": clcommit},
                                dimage=client_image + ":latest", 
                                volumes=client_vs)
 

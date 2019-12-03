@@ -5,4 +5,6 @@ SERVER="aioquic" \
 SERVER_PARAMS="--certificate tests/ssl_cert.pem --private-key tests/ssl_key.pem --host 193.167.100.100 -q /logs" \
 SCENARIO="simple-p2p --delay=15ms --bandwidth=10Mbps --queue=25" \
 LOGDIR="$PWD/logs" \
+CL_COMMIT="" \
+SV_COMMIT="" \
 docker-compose -f ../quic-network-simulator/docker-compose.yml up --abort-on-container-exit
