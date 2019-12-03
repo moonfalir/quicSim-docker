@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
  iproute2
 
 # install patched openssl
-RUN git clone --depth 1 -b openssl-quic-draft-23 https://github.com/tatsuhiro-t/openssl
+RUN git clone --depth 1 -b OpenSSL_1_1_1d-quic-draft-24 https://github.com/tatsuhiro-t/openssl
 
 WORKDIR /openssl
 
