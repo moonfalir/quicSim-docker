@@ -15,18 +15,17 @@ class Simple_p2p:
         p2p_parser.add_argument('--queue', action='store', type=int, required=True, help='Queue size of the queue attached to the link. Specified in packets.')
 
     def run(self, sim_args, curtime, entrypoint):
-        if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR', 'CL_COMMIT', 'SV_COMMIT']):
+        if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'CLIENT_LOGS', 'SERVER_LOGS', 'CL_COMMIT', 'SV_COMMIT']):
             # TODO show help
             exit(1)
         client_image = environ['CLIENT']
         client_params = environ['CLIENT_PARAMS']
         server_image = environ['SERVER']
         server_params = environ['SERVER_PARAMS']
-        logdir = environ['LOGDIR']
+        cl_logdir = environ['CLIENT_LOGS']
+        sv_logdir = environ['SERVER_LOGS']
         clcommit = environ['CL_COMMIT']
         svcommit = environ['SV_COMMIT']
-
-        clcommit = clcommit 
 
         setLogLevel('info')
 
@@ -34,7 +33,7 @@ class Simple_p2p:
         info('*** Adding controller\n')
         net.addController('c0')
         info('*** Adding docker containers\n')
-        client_vs = [logdir + '/logs/client:/logs']
+        client_vs = [cl_logdir + ':/logs']
         if sim_args.k:
             client_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
             server_params = curtime
@@ -42,7 +41,7 @@ class Simple_p2p:
         server = net.addDocker('server', ip='10.0.0.251',
                                environment={"ROLE": "server", "SERVER_PARAMS": server_params, "COMMIT": svcommit},
                                dimage=server_image + ":latest",
-                               volumes=[logdir + '/logs/server:/logs'])
+                               volumes=[sv_logdir + ':/logs'])
         client = net.addDocker('client', ip='10.0.0.252', 
                                environment={"ROLE": "client", "CLIENT_PARAMS": client_params, "COMMIT": clcommit},
                                dimage=client_image + ":latest", 
