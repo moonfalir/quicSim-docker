@@ -1,6 +1,6 @@
 # inspiration: https://github.com/marten-seemann/quic-interop-runner
-import logging, os, re, time, tempfile, subprocess
-
+import logging, os, re, time, tempfile, subprocess, glob
+from qlogmanager import QlogManager
 
 class LogFileFormatter(logging.Formatter):
   def format(self, record):
@@ -69,6 +69,18 @@ class QTest:
         except subprocess.TimeoutExpired as ex:
             output = ex.stdout
             expired = True
+
+        files = glob.glob(testlogdir + "/[!_]*")
+        for qlog in files:
+            QlogManager().addTestInfo(
+                qlog, 
+                scenario, 
+                "QNS", 
+                self._implementations[clientid]['clpars_qns'], 
+                self._implementations[serverid]['svpars_qns'], 
+                clientname, 
+                servername
+            )
 
     def run(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
