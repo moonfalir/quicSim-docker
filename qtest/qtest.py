@@ -48,7 +48,12 @@ class QTest:
             expired = True
 
         qlogmngr = QlogManager()
-        qlogmngr.addTestInfo(testlogdir, scenario, self._implementations[clientid]['clpars_qns'], self._implementations[serverid]['svpars_qns'], clientname, servername, "QNS")
+        clpars = self._implementations[clientid]['clpars_qns']
+        clpars = clpars.replace("$CURTIME" , curtime)
+        clpars = clpars.replace("$BYTESREQ", str(bytesreq))
+        svpars = self._implementations[serverid]['svpars_qns']
+        svpars = svpars.replace("$CURTIME" , curtime)
+        qlogmngr.addTestInfo(testlogdir, scenario, clpars, svpars, clientname, servername, "QNS")
 
         scenario = "simple_p2p --delay 15ms --bandwidth 5 --queue 25"
         qnscmd = (
@@ -72,7 +77,13 @@ class QTest:
         except subprocess.TimeoutExpired as ex:
             output = ex.stdout
             expired = True
-        qlogmngr.addTestInfo(testlogdir, scenario, self._implementations[clientid]['clpars_min'], self._implementations[serverid]['svpars_min'], clientname, servername, "MIN")
+        
+        clpars = self._implementations[clientid]['clpars_min']
+        clpars = clpars.replace("$CURTIME" , curtime)
+        clpars = clpars.replace("$BYTESREQ", str(bytesreq))
+        svpars = self._implementations[serverid]['svpars_min']
+        svpars = svpars.replace("$CURTIME" , curtime)
+        qlogmngr.addTestInfo(testlogdir, scenario, clpars, svpars, clientname, servername, "MIN")
 
     def run(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())

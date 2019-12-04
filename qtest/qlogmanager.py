@@ -26,16 +26,19 @@ class QlogManager:
 
     def _update_file(self, file: str, scenario: str, simulation: str, clparams: str, svparams: str, client: str, server: str, vantageclient: bool):
         data = {}
+        data["summary"] = {
+            "simulation": simulation,
+            "scenario": scenario,
+            "client": client,
+            "client_params": clparams,
+            "server": server,
+            "server_params": svparams
+        }
         with open(file, "r") as qlog_file:
-            data = json.load(qlog_file)
-            data["summary"] = {
-                "simulation": simulation,
-                "scenario": scenario,
-                "client": client,
-                "client_params": clparams,
-                "server": server,
-                "server_params": svparams
-            }
+            data_file = json.load(qlog_file)
+            for key in data_file:
+                if key != "summary":
+                    data[key] = data_file[key]
 
         os.remove(file)
         newfilename = ""
