@@ -19,7 +19,9 @@ autoreconf -i && ./configure PKG_CONFIG_PATH=$PWD/../openssl/build/lib/pkgconfig
 
 if [ "$ROLE" == "client" ]; then
     /wait-for-it.sh sim:57832 -s -t 30
+    git rev-parse HEAD > /logs/cl_commit.txt
     ./examples/client $CLIENT_PARAMS
 elif [ "$ROLE" == "server" ]; then
+    git rev-parse HEAD > /logs/sv_commit.txt
     ./examples/server $SERVER_PARAMS
 fi

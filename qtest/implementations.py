@@ -1,22 +1,22 @@
 IMPLEMENTATIONS = [
     {
         "name": "aioquic",
-        "clpars_qns": "--ca-certs tests/pycacert.pem -q /logs/clientaioquic_$CURTIME.qlog --legacy-http https://193.167.100.100:4433/$BYTESREQ",
+        "clpars_qns": "--ca-certs tests/pycacert.pem --insecure -q /logs/clientaioquic_$CURTIME.qlog --legacy-http https://193.167.100.100:4433/$BYTESREQ",
         "svpars_qns": "--certificate tests/ssl_cert.pem --private-key tests/ssl_key.pem --host 193.167.100.100 --port 4433 -q /logs",
-        "clpars_min": "--ca-certs tests/pycacert.pem -q /logs/clientaioquic_$CURTIME.qlog --legacy-http https://10.0.0.251:4433/$BYTESREQ",
+        "clpars_min": "--ca-certs tests/pycacert.pem --insecure -q /logs/clientaioquic_$CURTIME.qlog --legacy-http https://10.0.0.251:4433/$BYTESREQ",
         "svpars_min": "--certificate tests/ssl_cert.pem --private-key tests/ssl_key.pem --port 4433 -q /logs",
         "clcommit": "",
         "svcommit": ""
     },
-    {
-        "name": "ngtcp2",
-        "clpars_qns": "--timeout=1000 -q --qlog-file=/logs/clientngtcp2_$CURTIME.qlog 193.167.100.100 4433 http://server/$BYTESREQ",
-        "svpars_qns": "--qlog-dir=/logs -q 193.167.100.100 4433 server.key server.crt",
-        "clpars_min": "--timeout=1000 -q --qlog-file=/logs/clientmnngtcp2_$CURTIME.qlog 10.0.0.251 4433 http://server/$BYTESREQ",
-        "svpars_min": "--qlog-dir=/logs -q 10.0.0.251 4433 server.key server.crt",
-        "clcommit": "",
-        "svcommit": ""
-    },
+    #{
+    #    "name": "ngtcp2",
+    #    "clpars_qns": "--timeout=1000 -q --qlog-file=/logs/clientngtcp2_$CURTIME.qlog 193.167.100.100 4433 http://server/$BYTESREQ",
+    #    "svpars_qns": "--qlog-dir=/logs -q 193.167.100.100 4433 server.key server.crt",
+    #    "clpars_min": "--timeout=1000 -q --qlog-file=/logs/clientmnngtcp2_$CURTIME.qlog 10.0.0.251 4433 http://server/$BYTESREQ",
+    #    "svpars_min": "--qlog-dir=/logs -q 10.0.0.251 4433 server.key server.crt",
+    #    "clcommit": "",
+    #    "svcommit": ""
+    #},
     {
         "name": "picoquic",
         "clpars_qns": "-L -b /logs/clientpico_qns.log 193.167.100.100 4433 0:/$BYTESREQ;",

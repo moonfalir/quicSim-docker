@@ -5,7 +5,7 @@ class QlogManager:
         print("")
 
     def addTestInfo(self, testlogdir: str, scenario: str, clientpars: str, serverpars: str, clientname: str, servername: str, simulation: str):
-        regex = re.compile("^(?![cs][lv]_).+")
+        regex = re.compile("^(?![cs][lv]_).+\.qlog")
         files = []
         for dirpath, dirnames, filenames in os.walk(testlogdir):
             for f in filenames:
@@ -26,7 +26,26 @@ class QlogManager:
 
     def _update_file(self, file: str, scenario: str, simulation: str, clparams: str, svparams: str, client: str, server: str, vantageclient: bool):
         data = {}
+        commit = ""
+
+        split_path = file.split(sep="/")
+        sep ="/"
+
+        if vantageclient:
+            split_path[len(split_path) - 1] = "cl_commit.txt"
+            commitpath = sep.join(split_path)
+            with open(commitpath, "r") as commitfile:
+                commit = commitfile.read()
+            os.remove(commitpath)
+        else:
+            split_path[len(split_path) - 1] = "sv_commit.txt"
+            commitpath = sep.join(split_path)
+            with open(commitpath, "r") as commitfile:
+                commit = commitfile.read()
+            os.remove(commitpath)
+        commit = commit.replace('\n', '')
         data["summary"] = {
+            "commit": commit,
             "simulation": simulation,
             "scenario": scenario,
             "client": client,
@@ -49,9 +68,7 @@ class QlogManager:
         newfilename += simulation + "_"
         newfilename += client + "_" + server + ".qlog"
 
-        split_path = file.split(sep="/")
         split_path[len(split_path) - 1] = newfilename
-        sep ="/"
         newpath = sep.join(split_path)
 
         with open(newpath, "w") as qlog_file:

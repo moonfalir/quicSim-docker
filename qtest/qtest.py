@@ -13,13 +13,16 @@ class QTest:
     def __init__(self, implementations: list):
         self._implementations = implementations
     
-    def _run_testcase(self, serverid: int, clientid: int, rootlogdir: str, curtime: str):
+    def _run_testcase(self, serverid: int, clientid: int, rootlogdir: str, rootoutputdir: str, curtime: str):
         clientname = self._implementations[clientid]['name']
         servername = self._implementations[serverid]['name']
         if not os.path.isdir(rootlogdir + servername):
             os.makedirs(rootlogdir + servername)
+            os.makedirs(rootoutputdir + servername)
         testlogdir = rootlogdir + servername + "/" + clientname
+        testoutputdir = rootoutputdir + servername + "/" + clientname
         os.makedirs(testlogdir)
+        os.makedirs(testoutputdir)
 
         bytesreq = 5000000
         logging.debug("Request: %d bytes", bytesreq)
@@ -47,6 +50,9 @@ class QTest:
             output = ex.stdout
             expired = True
 
+        with open(testoutputdir + "/qns.out", "w+") as outputfile:
+            outputfile.write(output.decode('utf-8'))
+
         qlogmngr = QlogManager()
         clpars = self._implementations[clientid]['clpars_qns']
         clpars = clpars.replace("$CURTIME" , curtime)
@@ -72,11 +78,14 @@ class QTest:
         )
         print("Server: " + servername + ". Client: " + clientname + ". Test case: " + scenario + ". Simulation: MININET")
         try:
-            r = subprocess.run(qnscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=120)
+            r = subprocess.run(qnscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
             output = r.stdout
         except subprocess.TimeoutExpired as ex:
             output = ex.stdout
             expired = True
+
+        with open(testoutputdir + "/min.out", "w+") as outputfile:
+            outputfile.write(output.decode('utf-8'))
         
         clpars = self._implementations[clientid]['clpars_min']
         clpars = clpars.replace("$CURTIME" , curtime)
@@ -88,12 +97,15 @@ class QTest:
     def run(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
         rootlogdir = os.path.dirname(os.path.abspath(__file__)) + "/logs/" + curtime
+        rootoutputdir = os.path.dirname(os.path.abspath(__file__)) + "/outputs/" + curtime
         os.makedirs(rootlogdir)
+        os.makedirs(rootoutputdir)
         rootlogdir += "/"
+        rootoutputdir += "/"
 
         # TODO: run testcases for all servers and clients
         # self._run_testcase(3, 3, rootlogdir, curtime)
 
-        for serverid, server in enumerate(self._implementations):
-            for clientid, client in enumerate(self._implementations):
-                self._run_testcase(serverid, clientid, rootlogdir, curtime)
+        #for serverid, server in enumerate(self._implementations):
+        #    for clientid, client in enumerate(self._implementations):
+        self._run_testcase(1, 0, rootlogdir, rootoutputdir, curtime)

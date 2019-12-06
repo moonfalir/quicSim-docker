@@ -5,3 +5,8 @@
 /.vscode
 
 *.pyc
+
+/*/outputs
+
+/qtest/singletest
+/qtest/runTest.sh
