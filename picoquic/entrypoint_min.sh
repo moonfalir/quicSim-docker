@@ -15,10 +15,12 @@ cmake . && make
 
 if [ "$ROLE" == "client" ]; then 
     ./picoquicdemo $CLIENT_PARAMS
-    ./picolog_t -f qlog /logs/clientpico_mn.log > /logs/clientpico_mn.qlog 
+    ./picolog_t -f qlog /logs/clientpico_mn.log > /logs/clientpico_mn.qlog
+    rm /logs/clientpico_mn.log
     sleep 3
 elif [ "$ROLE" == "server" ]; then
     ./picoquicdemo $SERVER_PARAMS
     ./picolog_t -f qlog /logs/serverpico_mn.log > /logs/serverpico_mn.qlog
+    rm /logs/serverpico_mn.log
     sleep 3
 fi

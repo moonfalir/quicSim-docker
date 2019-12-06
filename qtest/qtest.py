@@ -92,4 +92,8 @@ class QTest:
         rootlogdir += "/"
 
         # TODO: run testcases for all servers and clients
-        self._run_testcase(3, 3, rootlogdir, curtime)
+        # self._run_testcase(3, 3, rootlogdir, curtime)
+
+        for serverid, server in enumerate(self._implementations):
+            for clientid, client in enumerate(self._implementations):
+                self._run_testcase(serverid, clientid, rootlogdir, curtime)

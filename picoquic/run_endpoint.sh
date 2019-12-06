@@ -20,9 +20,11 @@ if [ "$ROLE" == "client" ]; then
     /wait-for-it.sh sim:57832 -s -t 30    
     ./picoquicdemo $CLIENT_PARAMS
     ./picolog_t -f qlog /logs/clientpico_qns.log > /logs/clientpico_qns.qlog 
+    rm /logs/clientpico_qns.log
     sleep 3
 elif [ "$ROLE" == "server" ]; then
     ./picoquicdemo $SERVER_PARAMS
     ./picolog_t -f qlog /logs/serverpico_qns.log > /logs/serverpico_qns.qlog
+    rm /logs/serverpico_qns.log
     sleep 3
 fi
