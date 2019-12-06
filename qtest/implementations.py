@@ -19,9 +19,9 @@ IMPLEMENTATIONS = [
     #},
     {
         "name": "picoquic",
-        "clpars_qns": "-L -b /logs/clientpico_qns.log 193.167.100.100 4433 0:/$BYTESREQ;",
+        "clpars_qns": "-L -a hq-24 -b /logs/clientpico_qns.log 193.167.100.100 4433 0:/$BYTESREQ;",
         "svpars_qns": "-1 -L -p 4433 -b /logs/serverpico_qns.log",
-        "clpars_min": "-L -b /logs/clientpico_mn.log 10.0.0.251 4433 0:/$BYTESREQ;",
+        "clpars_min": "-L -a hq-24 -b /logs/clientpico_mn.log 10.0.0.251 4433 0:/$BYTESREQ;",
         "svpars_min": "-1 -L -p 4433 -b /logs/serverpico_mn.log",
         "clcommit": "",
         "svcommit": ""

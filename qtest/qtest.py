@@ -106,6 +106,6 @@ class QTest:
         # TODO: run testcases for all servers and clients
         # self._run_testcase(3, 3, rootlogdir, curtime)
 
-        #for serverid, server in enumerate(self._implementations):
-        #    for clientid, client in enumerate(self._implementations):
-        self._run_testcase(1, 0, rootlogdir, rootoutputdir, curtime)
+        for serverid, server in enumerate(self._implementations):
+            for clientid, client in enumerate(self._implementations):
+                self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime)
