@@ -1,13 +1,5 @@
 #!/bin/bash
 
-git pull
-
-if [ "$COMMIT" ]; then 
-    git checkout "$COMMIT"
-fi
-
-cmake .. && make
-
 # The following variables are available for use:
 # - ROLE contains the role of this execution context, client or server
 # - SERVER_PARAMS contains user-supplied command line parameters

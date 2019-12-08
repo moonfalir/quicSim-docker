@@ -46,11 +46,7 @@ RUN autoreconf -i && ./configure PKG_CONFIG_PATH=$PWD/../openssl/build/lib/pkgco
 
 COPY server.crt server.key ./
 
-COPY entrypoint_min.sh .
-RUN chmod +x entrypoint_min.sh
-
-# copy run script and run it
-COPY run_endpoint.sh .
-RUN chmod +x run_endpoint.sh
+COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh ./
+RUN chmod +x entrypoint_min.sh run_endpoint.sh updateAndBuild.sh
 
 ENTRYPOINT [ "./run_endpoint.sh" ]
