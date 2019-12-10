@@ -15,7 +15,8 @@ RUN apt-get update && apt-get install -y \
  libcunit1 \
  net-tools \
  iputils-ping \
- iproute2
+ iproute2 \
+ python3
 
 # install patched openssl
 RUN git clone --depth 1 -b OpenSSL_1_1_1d-quic-draft-24 https://github.com/tatsuhiro-t/openssl
@@ -46,7 +47,7 @@ RUN autoreconf -i && ./configure PKG_CONFIG_PATH=$PWD/../openssl/build/lib/pkgco
 
 COPY server.crt server.key ./
 
-COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh ./
+COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh tcp_server.py ./
 RUN chmod +x entrypoint_min.sh run_endpoint.sh updateAndBuild.sh
 
 ENTRYPOINT [ "./run_endpoint.sh" ]

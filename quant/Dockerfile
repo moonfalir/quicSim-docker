@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y \
  pkg-config \
  net-tools \
  iputils-ping \
- iproute2
+ iproute2 \
+ python3 
 
 # install quant
 RUN git clone https://github.com/NTAP/quant
@@ -32,7 +33,7 @@ WORKDIR ./Debug
 
 RUN cmake .. && make
 
-COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh ./
+COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh tcp_server.py ./
 RUN chmod +x entrypoint_min.sh run_endpoint.sh updateAndBuild.sh
 
 ENTRYPOINT [ "./run_endpoint.sh" ]

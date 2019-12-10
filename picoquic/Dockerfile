@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
  net-tools \
  iputils-ping \
  iproute2 \
- libssl-dev
+ libssl-dev \
+ python3
 
 ## install picotls
 RUN git clone https://github.com/h2o/picotls
@@ -34,7 +35,7 @@ WORKDIR /picoquic
 
 RUN cmake . && make
 
-COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh ./
+COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh tcp_server.py ./
 RUN chmod +x entrypoint_min.sh run_endpoint.sh updateAndBuild.sh
 
 ENTRYPOINT [ "./run_endpoint.sh" ]

@@ -17,6 +17,8 @@ WORKDIR /aioquic
 
 RUN pip3 install -e . && pip3 install aiofiles asgiref httpbin starlette wsproto
 
+COPY tcp_server.py .
+
 COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh ./
 RUN chmod +x entrypoint_min.sh run_endpoint.sh updateAndBuild.sh
 
