@@ -25,7 +25,7 @@ class QlogManager:
             )
 
     def _update_file(self, file: str, scenario: str, simulation: str, clparams: str, svparams: str, client: str, server: str, vantageclient: bool):
-        data = {}
+        newdata_file = {}
         commit = ""
 
         split_path = file.split(sep="/")
@@ -44,7 +44,7 @@ class QlogManager:
                 commit = commitfile.read()
             os.remove(commitpath)
         commit = commit.replace('\n', '')
-        data["summary"] = {
+        newdata_file["summary"] = {
             "commit": commit,
             "simulation": simulation,
             "scenario": scenario,
@@ -54,10 +54,26 @@ class QlogManager:
             "server_params": svparams
         }
         with open(file, "r") as qlog_file:
-            data_file = json.load(qlog_file)
+            data = qlog_file.read().lstrip()
+            try:
+                data_file = json.loads(data)
+            except json.JSONDecodeError as err:
+                # Fix for picoquic qlog, where extra packet outside of connection is logged
+                if data.startswith('['):
+                    delim = "}]"
+                    split = data.split(delim)
+                    del split[0]
+                    data = delim.join(split)
+                else:
+                    delim = "]}]}"
+                    split = data.split(delim)
+                    split[len(split) - 1] = ""
+                    data = delim.join(split)
+
+                data_file = json.loads(data)
             for key in data_file:
                 if key != "summary":
-                    data[key] = data_file[key]
+                    newdata_file[key] = data_file[key]
 
         os.remove(file)
         newfilename = ""
@@ -72,4 +88,4 @@ class QlogManager:
         newpath = sep.join(split_path)
 
         with open(newpath, "w") as qlog_file:
-            json.dump(data, qlog_file)
+            json.dump(newdata_file, qlog_file)

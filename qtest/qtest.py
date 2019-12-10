@@ -62,7 +62,7 @@ class QTest:
         qlogmngr.addTestInfo(testlogdir, scenario, clpars, svpars, clientname, servername, "QNS")
 
         scenario = "simple_p2p --delay 15ms --bandwidth 5 --queue 25"
-        qnscmd = (
+        mincmd = (
             "CURTIME=" + curtime + " "
             "SERVER_LOGS=" + testlogdir + " "
             "CLIENT_LOGS=" + testlogdir + " "
@@ -78,7 +78,7 @@ class QTest:
         )
         print("Server: " + servername + ". Client: " + clientname + ". Test case: " + scenario + ". Simulation: MININET")
         try:
-            r = subprocess.run(qnscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
+            r = subprocess.run(mincmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
             output = r.stdout
         except subprocess.TimeoutExpired as ex:
             output = ex.stdout

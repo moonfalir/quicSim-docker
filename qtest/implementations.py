@@ -34,5 +34,5 @@ IMPLEMENTATIONS = [
         "svpars_min": "-t 2 -p 4433 -i eth1 -q /logs/servermnquant_$CURTIME.qlog",
         "clcommit": "",
         "svcommit": ""
-    },
+    }
 ]
