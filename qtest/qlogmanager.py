@@ -69,8 +69,10 @@ class QlogManager:
                     split = data.split(delim)
                     split[len(split) - 1] = ""
                     data = delim.join(split)
-
-                data_file = json.loads(data)
+                try:
+                    data_file = json.loads(data)
+                except:
+                    return
             for key in data_file:
                 if key != "summary":
                     newdata_file[key] = data_file[key]
