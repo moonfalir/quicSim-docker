@@ -35,8 +35,8 @@ class QTest:
         os.makedirs(testlogdir)
         os.makedirs(testoutputdir)  
 
-        bytesreq = 5000000
-        logging.debug("Request: %d bytes", bytesreq)
+        bytesreq = scenario["bytesreq"]
+        logging.debug("Request: %s bytes", bytesreq)
         qnscmd = (
             "CURTIME=" + curtime + " "
             "SERVER_LOGS=" + testlogdir + " "
@@ -44,7 +44,7 @@ class QTest:
             "SCENARIO=\"" + scenario["qns"] + "\" "
             "CLIENT=" + clientname + " "
             "SERVER=" + servername + " "
-            "BYTESREQ=" + str(bytesreq) + " "
+            "BYTESREQ=" + bytesreq + " "
             "CLIENT_PARAMS=\"" + clients[clientid]['clpars_qns'] + "\" "
             "SERVER_PARAMS=\"" + servers[serverid]['svpars_qns'] + "\" "
             "CL_COMMIT=\"" + clients[clientid]['clcommit'] + "\" "
@@ -66,7 +66,7 @@ class QTest:
         qlogmngr = QlogManager()
         clpars = clients[clientid]['clpars_qns']
         clpars = clpars.replace("$CURTIME" , curtime)
-        clpars = clpars.replace("$BYTESREQ", str(bytesreq))
+        clpars = clpars.replace("$BYTESREQ", bytesreq)
         svpars = servers[serverid]['svpars_qns']
         svpars = svpars.replace("$CURTIME" , curtime)
         qlogmngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
@@ -78,7 +78,7 @@ class QTest:
             "SCENARIO=\"" + scenario["min"] + "\" "
             "CLIENT=" + clientname + " "
             "SERVER=" + servername + " "
-            "BYTESREQ=" + str(bytesreq) + " "
+            "BYTESREQ=" + bytesreq + " "
             "CLIENT_PARAMS=\"" + clients[clientid]['clpars_min'] + "\" "
             "SERVER_PARAMS=\"" + servers[serverid]['svpars_min'] + "\" "
             "CL_COMMIT=\"" + clients[clientid]['clcommit'] + "\" "
@@ -98,7 +98,7 @@ class QTest:
         
         clpars = clients[clientid]['clpars_min']
         clpars = clpars.replace("$CURTIME" , curtime)
-        clpars = clpars.replace("$BYTESREQ", str(bytesreq))
+        clpars = clpars.replace("$BYTESREQ", bytesreq)
         svpars = servers[serverid]['svpars_min']
         svpars = svpars.replace("$CURTIME" , curtime)
         qlogmngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
