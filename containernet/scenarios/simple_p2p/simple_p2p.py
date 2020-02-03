@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from mininet.net import Containernet
 from mininet.node import Controller
 from mininet.cli import CLI

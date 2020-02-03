@@ -7,9 +7,9 @@ RUN apt-get update \
     net-tools \
     aptitude \
     build-essential \
-    python-setuptools \
-    python-dev \
-    python-pip \
+    python3-setuptools \
+    python3-dev \
+    python3-pip \
     software-properties-common \
     ansible \
     curl \
@@ -22,10 +22,10 @@ RUN git clone https://github.com/moonfalir/containernet
 WORKDIR /containernet/ansible
 RUN ansible-playbook -i "localhost," -c local --skip-tags "notindocker" install.yml
 WORKDIR /containernet
-RUN python setup.py develop
+RUN make develop
 
 # Hotfix: https://github.com/pytest-dev/pytest/issues/4770
-RUN pip2 install "more-itertools<=5.0.0"
+RUN pip3 install "more-itertools<=5.0.0"
 
 # tell containernet that it runs in a container
 ENV CONTAINERNET_NESTED 1

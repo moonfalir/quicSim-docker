@@ -4,7 +4,7 @@
 service openvswitch-switch start
 
 # update containernet
-git pull && python setup.py install
+git pull && make develop
 
 # check if docker socket is mounted
 if [ ! -S /var/run/docker.sock ]; then
@@ -18,7 +18,7 @@ cp -a /containernet/poxcontrollers/. /pox/pox/forwarding/
 echo "Welcome to Containernet running within a Docker container ..."
 
 if [[ $# -eq 0 ]]; then
-    python ./scenarios/containernet.py $SCENARIO
+    python3 ./scenarios/containernet.py $SCENARIO
 else
     exec $*
 fi
