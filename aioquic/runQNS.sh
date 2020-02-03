@@ -3,7 +3,7 @@ CLIENT="aioquic" \
 CLIENT_PARAMS="--ca-certs tests/pycacert.pem -q /logs/clientaioquic_$CURTIME.qlog --legacy-http https://193.167.100.100:4433/5000000" \
 SERVER="aioquic" \
 SERVER_PARAMS="--certificate tests/ssl_cert.pem --private-key tests/ssl_key.pem --host 193.167.100.100 -q /logs" \
-SCENARIO="simple-p2p --delay=15ms --bandwidth=10Mbps --queue=25" \
+SCENARIO="blackhole --delay=15ms --bandwidth=5Mbps --queue=25 --on=3 --off=1 --repeat=5" \
 CLIENT_LOGS="$PWD/logs" \
 SERVER_LOGS="$PWD/logs" \
 CL_COMMIT="" \
