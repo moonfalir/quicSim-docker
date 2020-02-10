@@ -40,8 +40,8 @@ IMPLEMENTATIONS = {
     "clients": [
         {
             "name": "aioquic",
-            "clpars_qns": "--ca-certs tests/pycacert.pem --insecure -q /logs/clientaioquic_$CURTIME.qlog --legacy-http https://193.167.100.100:4433/$BYTESREQ",
-            "clpars_min": "--ca-certs tests/pycacert.pem --insecure -q /logs/clientaioquic_$CURTIME.qlog --legacy-http https://10.0.0.251:4433/$BYTESREQ",
+            "clpars_qns": "--ca-certs tests/pycacert.pem --insecure -q /logs/clientaioquic_$CURTIME.qlog -l /logs/ssl-key.log --legacy-http https://193.167.100.100:4433/$BYTESREQ",
+            "clpars_min": "--ca-certs tests/pycacert.pem --insecure -q /logs/clientaioquic_$CURTIME.qlog -l /logs/ssl-key.log --legacy-http https://10.0.0.251:4433/$BYTESREQ",
             "clcommit": ""
         }
     ]

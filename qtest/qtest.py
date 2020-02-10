@@ -1,6 +1,6 @@
 # inspiration: https://github.com/marten-seemann/quic-interop-runner
 import logging, os, re, time, tempfile, subprocess, json
-from qlogmanager import QlogManager
+from filemanager import FileManager
 from scenarios import SCENARIOS
 
 class LogFileFormatter(logging.Formatter):
@@ -63,13 +63,14 @@ class QTest:
         with open(testoutputdir + "/qns.out", "w+") as outputfile:
             outputfile.write(output.decode('utf-8'))
 
-        qlogmngr = QlogManager()
+        filemngr = FileManager()
         clpars = clients[clientid]['clpars_qns']
         clpars = clpars.replace("$CURTIME" , curtime)
         clpars = clpars.replace("$BYTESREQ", bytesreq)
         svpars = servers[serverid]['svpars_qns']
         svpars = svpars.replace("$CURTIME" , curtime)
-        qlogmngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
+        filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
+        filemngr.pcaptojson(testlogdir, "QNS")
 
         mincmd = (
             "CURTIME=" + curtime + " "
@@ -101,7 +102,7 @@ class QTest:
         clpars = clpars.replace("$BYTESREQ", bytesreq)
         svpars = servers[serverid]['svpars_min']
         svpars = svpars.replace("$CURTIME" , curtime)
-        qlogmngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
+        filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
 
     def run(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
