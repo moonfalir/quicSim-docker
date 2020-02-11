@@ -12,6 +12,7 @@ services:
     pid: "host"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - $SERVER_LOGS:/logs
     environment:
       - SERVER=$SERVER
       - SERVER_PARAMS=$SERVER_PARAMS

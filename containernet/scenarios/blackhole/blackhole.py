@@ -1,4 +1,7 @@
 #!/usr/bin/python
+from sys import path
+path.append('..')
+
 from mininet.net import Containernet
 from mininet.node import Controller
 from mininet.cli import CLI
@@ -7,6 +10,7 @@ from mininet.log import info, setLogLevel
 from os import environ
 from argparse import ArgumentParser, ArgumentTypeError
 from time import sleep
+from packetcapture import PacketCapture
 
 class Blackhole:
     def check_positive(self, value):
@@ -96,11 +100,14 @@ class Blackhole:
         client.cmd('./updateAndBuild.sh')
         info('*** Starting network\n')
         net.start()
+        capture = PacketCapture()
         server.cmd(entrypoint + " &")
+        capture.startCapture()
         info('\n' + entrypoint + '\n')
         self.startTest(client, net, entrypoint, sim_args)
         # Wait some time to allow server finish writing to log file
         info('Test finished, waiting for server to receive all packets\n')
         sleep(3)
+        capture.stopCapture()
         info('*** Stopping network\n')
         net.stop()

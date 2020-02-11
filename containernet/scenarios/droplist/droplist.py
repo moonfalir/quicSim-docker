@@ -1,4 +1,7 @@
 #!/usr/bin/python
+from sys import path
+path.append('..')
+
 from mininet.net import Containernet
 from mininet.node import POX, OVSController
 from mininet.cli import CLI
@@ -7,6 +10,7 @@ from mininet.log import info, setLogLevel
 from os import environ
 from argparse import ArgumentParser
 from time import sleep
+from packetcapture import PacketCapture
 
 class Droplist:
     def addCLIArguments(self, p2p_parser):
@@ -68,10 +72,13 @@ class Droplist:
         client.cmd('./updateAndBuild.sh')
         info('*** Starting network\n')
         net.start()
+        capture = PacketCapture()
         server.cmd(entrypoint + " &")
+        capture.startCapture()
         info('\n' + entrypoint + '\n')
         info(client.cmd(entrypoint) + "\n")
         # Wait some time to allow server finish writing to log file
         sleep(3)
+        capture.stopCapture()
         info('*** Stopping network')
         net.stop()
