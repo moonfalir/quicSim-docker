@@ -22,12 +22,12 @@ class QTest:
         if not os.path.isdir(rootlogdir + servername):
             os.makedirs(rootlogdir + servername)
             os.makedirs(rootoutputdir + servername)
-        testlogdir = rootlogdir + servername + "/" + clientname
-        testoutputdir = rootoutputdir + servername + "/" + clientname
-
-        if not os.path.isdir(testlogdir):
-            os.makedirs(testlogdir)
-            os.makedirs(testoutputdir)
+        testlogdir = rootlogdir + servername# + "/" + clientname
+        testoutputdir = rootoutputdir + servername# + "/" + clientname
+#
+        #if not os.path.isdir(testlogdir):
+        #    os.makedirs(testlogdir)
+        #    os.makedirs(testoutputdir)
 
         testlogdir += "/" + scenario['name'] 
         testoutputdir += "/" + scenario['name']    
@@ -103,6 +103,7 @@ class QTest:
         svpars = servers[serverid]['svpars_min']
         svpars = svpars.replace("$CURTIME" , curtime)
         filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
+        filemngr.pcaptojson(testlogdir, "MIN")
 
     def run(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())

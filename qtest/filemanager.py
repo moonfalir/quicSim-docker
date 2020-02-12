@@ -1,5 +1,6 @@
 import json, os, re
 import subprocess
+from metriccalculator import MetricCalculator
 
 class FileManager:
     _tshark_path = "/home/jonas/programs/wireshark/run/tshark"
@@ -104,13 +105,18 @@ class FileManager:
 
         sslkeyfile = logdir + "/" + "ssl-key.log"
         sep="/"
+        jsonfiles = []
         for pcap in files:
             split_path = pcap.split(sep="/")
             split_path[len(split_path) - 1] = sim + "-" + split_path[len(split_path) - 1]
             split_path[len(split_path) - 1] = split_path[len(split_path) - 1].replace("pcap", "json")
             outputfile = sep.join(split_path)
+            jsonfiles.append(outputfile)
             cmd = self._tshark_path + " --no-duplicate-keys -r " + pcap + " -T json -o tls.keylog_file:" + sslkeyfile + " > " + outputfile
             subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             os.remove(pcap)
 
         os.remove(sslkeyfile)
+
+        met_calc = MetricCalculator()
+        met_calc.calculateMetrics(logdir, jsonfiles, True, True)        
