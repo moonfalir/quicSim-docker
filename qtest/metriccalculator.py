@@ -13,18 +13,22 @@ class MetricCalculator():
         })
         id = len(self._metricsperfile) - 1
         totals = {
-            "gp_amount": 0,
+            "rtt_amount": 0,
             "tp_time": 0,
-            "gp_time": 0
+            "gp_time": 0,
+            "unacked_packets": {}
         }
         for file in files:
             serverside = "server" in file
             totals = self.getTcpDumpMetrics(file, isquic, serverside, id, totals)
 
+        print(self._metricsperfile)
+        #print(totals)
         self._metricsperfile[id]["avg_throughput"] /= 125.0
         self._metricsperfile[id]["avg_throughput"] /= totals["tp_time"]
         self._metricsperfile[id]["avg_goodput"] /= 125.0
         self._metricsperfile[id]["avg_goodput"] /= totals["gp_time"]
+        self._metricsperfile[id]["avg_rtt"] /= totals["rtt_amount"]
         print(self._metricsperfile)
 
     def getTcpDumpMetrics(self, file: str, isquic: bool, serverside: bool, id: int, totals: dict):
@@ -74,6 +78,7 @@ class MetricCalculator():
                 except KeyError as e:
                     print()
             #find RTT
+            totals = self.trackRTTValues(packet, id, totals, isserver)
             #count retransmission
         else:
             if isserver:
@@ -95,6 +100,53 @@ class MetricCalculator():
                     print()
 
         return totals
+
+    def trackRTTValues(self, packet: dict, id: int, totals: dict, isserver: bool):
+        if isserver:
+            try: 
+                if "quic.short" in packet['_source']['layers']["quic"]:
+                    pn = int(packet['_source']['layers']["quic"]["quic.short"]["quic.packet_number"])
+                else:
+                    pn = int(packet['_source']['layers']["quic"]["quic.packet_number"])
+                timestamp = float(packet['_source']['layers']['frame']['frame.time_relative']) * 1000
+                totals["unacked_packets"][pn] = timestamp
+            except TypeError as t:
+                print(t)
+            except KeyError as e:
+                print(e)
+        else:
+            try:
+                ackframe = self.getAckFrame(packet)
+                if ackframe:
+                    ack_timestamp = float(packet['_source']['layers']['frame']['frame.time_relative']) * 1000
+                    large_ack = int(ackframe['quic.ack.largest_acknowledged'])
+                    first_range = large_ack - int(ackframe['quic.ack.first_ack_range'])
+                    acked_packets = []
+                    for index, pn_timestamp in totals["unacked_packets"].items():
+                        if index >= first_range and index <= large_ack:
+                            self._metricsperfile[id]["avg_rtt"] += (ack_timestamp - pn_timestamp)
+                            totals["rtt_amount"] += 1
+                            acked_packets.append(index)
+                    for acked_packet in acked_packets:
+                        del totals["unacked_packets"][acked_packet]
+            except TypeError as t:
+                print(t)
+            except KeyError as e:
+                print(e)
+        return totals
+
+    def getAckFrame(self, packet: dict):
+        frames = packet['_source']['layers']["quic"]["quic.frame"]
+        ackframe = None
+        if isinstance(frames, list):
+            for frame in frames:
+                if frame["quic.frame_type"] == "2":
+                    ackframe = frame
+                    break
+        else:
+            if frames["quic.frame_type"] == "2":
+                    ackframe = frames
+        return ackframe
 
     def addThroughputBytes(self, id: int, bytes_amount: float, totals: dict, timestamp: float):
         self._metricsperfile[id]["avg_throughput"] += bytes_amount
