@@ -4,6 +4,7 @@ from metriccalculator import MetricCalculator
 
 class FileManager:
     _tshark_path = "/home/jonas/programs/wireshark/run/tshark"
+    _serverqlog = ""
     def __init__(self):
         print("")
 
@@ -92,6 +93,9 @@ class FileManager:
         split_path[len(split_path) - 1] = newfilename
         newpath = sep.join(split_path)
 
+        if not vantageclient:
+            self._serverqlog = newpath
+
         with open(newpath, "w") as qlog_file:
             json.dump(newdata_file, qlog_file)
 
@@ -118,4 +122,5 @@ class FileManager:
 
         os.remove(sslkeyfile)
 
-        met_calc.calculateMetrics(logdir, jsonfiles, True, True, sim)        
+        met_calc.calculateMetrics(logdir, jsonfiles, self._serverqlog, True, True, sim)        
+        self._serverqlog = ""

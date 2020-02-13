@@ -2,9 +2,9 @@ import os, json, csv
 
 class MetricCalculator():
     _metricsperfile = []
-    _csv_columns = ['name', 'sim', 'avg_goodput', 'avg_throughput', 'avg_rtt']
+    _csv_columns = ['name', 'sim', 'avg_goodput', 'avg_throughput', 'avg_rtt', 'avg_cwnd']
     
-    def calculateMetrics(self, logdir: str, files: list, istcpdump: bool, isquic: bool, sim: str):
+    def calculateMetrics(self, logdir: str, tcpdumpfiles: list, qlogfile: str, istcpdump: bool, isquic: bool, sim: str):
         split_dir = logdir.split("/")
         name = split_dir[len(split_dir) - 3] + "/" + split_dir[len(split_dir) - 2] + "/" + split_dir[len(split_dir) - 1]
         self._metricsperfile.append({
@@ -12,18 +12,21 @@ class MetricCalculator():
             "sim": sim,
             "avg_goodput": 0.0,
             "avg_throughput": 0.0,
-            "avg_rtt": 0.0
+            "avg_rtt": 0.0,
+            "avg_cwnd": 0.0
         })
         id = len(self._metricsperfile) - 1
         totals = {
             "rtt_amount": 0,
             "tp_time": 0,
             "gp_time": 0,
+            "cwnd_amount": 0,
             "unacked_packets": {}
         }
-        for file in files:
+        for file in tcpdumpfiles:
             serverside = "server" in file
             totals = self.getTcpDumpMetrics(file, isquic, serverside, id, totals)
+        self.getAvgCWND(qlogfile, id, totals)
 
         #print(self._metricsperfile)
         #print(totals)
@@ -33,9 +36,35 @@ class MetricCalculator():
             self._metricsperfile[id]["avg_goodput"] /= 125.0
             self._metricsperfile[id]["avg_goodput"] /= totals["gp_time"]
             self._metricsperfile[id]["avg_rtt"] /= totals["rtt_amount"]
+            self._metricsperfile[id]["avg_cwnd"] /= totals["cwnd_amount"]
         except ZeroDivisionError as z:
             print()
         #print(self._metricsperfile)
+
+    def getAvgCWND(self, file: str, id: int, totals: dict):
+        data = ""
+        with open(file, "r") as qlog_file:
+            data = qlog_file.read()
+
+        qlog = json.loads(data)
+        events = qlog["traces"][0]["events"]
+        event_fields = [x.lower() for x in qlog["traces"][0]["event_fields"]]
+        event_type_id = event_fields.index("event_type")
+        data_id = event_fields.index("data")
+
+        prev_cwnd = -1.0
+
+        for event in events:
+            if event[event_type_id] == "metrics_updated" and "cwnd" in event[data_id]:
+                cur_cwnd = float(event[data_id]["cwnd"])
+                if cur_cwnd != prev_cwnd:
+                    self._metricsperfile[id]["avg_cwnd"] += cur_cwnd
+                    totals["cwnd_amount"] += 1
+                    prev_cwnd = cur_cwnd
+
+        return totals
+    
+
 
     def getTcpDumpMetrics(self, file: str, isquic: bool, serverside: bool, id: int, totals: dict):
         data = ""
