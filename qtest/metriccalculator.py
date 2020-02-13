@@ -1,12 +1,15 @@
-import os, json
+import os, json, csv
 
 class MetricCalculator():
     _metricsperfile = []
+    _csv_columns = ['name', 'sim', 'avg_goodput', 'avg_throughput', 'avg_rtt']
     
-    def calculateMetrics(self, name: str, files: list, istcpdump: bool, isquic: bool):
-        print("calculate metrics of 1 connection")
+    def calculateMetrics(self, logdir: str, files: list, istcpdump: bool, isquic: bool, sim: str):
+        split_dir = logdir.split("/")
+        name = split_dir[len(split_dir) - 3] + "/" + split_dir[len(split_dir) - 2] + "/" + split_dir[len(split_dir) - 1]
         self._metricsperfile.append({
             "name": name,
+            "sim": sim,
             "avg_goodput": 0.0,
             "avg_throughput": 0.0,
             "avg_rtt": 0.0
@@ -24,12 +27,15 @@ class MetricCalculator():
 
         #print(self._metricsperfile)
         #print(totals)
-        self._metricsperfile[id]["avg_throughput"] /= 125.0
-        self._metricsperfile[id]["avg_throughput"] /= totals["tp_time"]
-        self._metricsperfile[id]["avg_goodput"] /= 125.0
-        self._metricsperfile[id]["avg_goodput"] /= totals["gp_time"]
-        self._metricsperfile[id]["avg_rtt"] /= totals["rtt_amount"]
-        print(self._metricsperfile)
+        try:
+            self._metricsperfile[id]["avg_throughput"] /= 125.0
+            self._metricsperfile[id]["avg_throughput"] /= totals["tp_time"]
+            self._metricsperfile[id]["avg_goodput"] /= 125.0
+            self._metricsperfile[id]["avg_goodput"] /= totals["gp_time"]
+            self._metricsperfile[id]["avg_rtt"] /= totals["rtt_amount"]
+        except ZeroDivisionError as z:
+            print()
+        #print(self._metricsperfile)
 
     def getTcpDumpMetrics(self, file: str, isquic: bool, serverside: bool, id: int, totals: dict):
         data = ""
@@ -89,9 +95,17 @@ class MetricCalculator():
                         for frame in frames:
                             if "quic.stream.length" in frame:
                                 bytes_amount += float(frame['quic.stream.length'])
+                            else:
+                                if "quic.stream_data" in frame:
+                                    data = frame["quic.stream_data"].replace(':', '')
+                                    bytes_amount = len(data) / 2
                     else:
                         if "quic.stream.length" in frames:
                                 bytes_amount += float(frames['quic.stream.length'])
+                        else:
+                            if "quic.stream_data" in frames:
+                                data = frames["quic.stream_data"].replace(':', '')
+                                bytes_amount = len(data) / 2
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
                     totals = self.addGoodputBytes(id, bytes_amount, totals, timestamp)
                 except KeyError as e:
@@ -201,5 +215,8 @@ class MetricCalculator():
     def countThroughput(self, bytes: int, timestamp: float):
         print("bytes")
     
-    def getMetrics(self):
-        print("return calculated metrics")
+    def saveMetrics(self, outputdir: str):
+        with open(outputdir + "/metrics.csv", mode='w') as metrics_file:
+            metrics_writer = csv.DictWriter(metrics_file, delimiter=",", fieldnames=self._csv_columns)
+            metrics_writer.writeheader()
+            metrics_writer.writerows(self._metricsperfile)

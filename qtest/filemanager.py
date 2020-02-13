@@ -95,7 +95,7 @@ class FileManager:
         with open(newpath, "w") as qlog_file:
             json.dump(newdata_file, qlog_file)
 
-    def pcaptojson(self, logdir: str, sim: str):
+    def pcaptojson(self, logdir: str, sim: str, met_calc: MetricCalculator):
         regex = re.compile("^(?![cs][lv]_).+\.pcap")
         files = []
         for dirpath, dirnames, filenames in os.walk(logdir):
@@ -118,5 +118,4 @@ class FileManager:
 
         os.remove(sslkeyfile)
 
-        met_calc = MetricCalculator()
-        met_calc.calculateMetrics(logdir, jsonfiles, True, True)        
+        met_calc.calculateMetrics(logdir, jsonfiles, True, True, sim)        

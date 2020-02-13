@@ -2,6 +2,7 @@
 import logging, os, re, time, tempfile, subprocess, json
 from filemanager import FileManager
 from scenarios import SCENARIOS
+from metriccalculator import MetricCalculator
 
 class LogFileFormatter(logging.Formatter):
   def format(self, record):
@@ -14,7 +15,7 @@ class QTest:
     def __init__(self, implementations: list):
         self._implementations = implementations
     
-    def _run_testcase(self, serverid: int, clientid: int, rootlogdir: str, rootoutputdir: str, curtime: str, scenario: dict):
+    def _run_testcase(self, serverid: int, clientid: int, rootlogdir: str, rootoutputdir: str, curtime: str, scenario: dict, met_calc: MetricCalculator):
         servers = self._implementations['servers']
         clients = self._implementations['clients']
         clientname = clients[clientid]['name']
@@ -70,7 +71,7 @@ class QTest:
         svpars = servers[serverid]['svpars_qns']
         svpars = svpars.replace("$CURTIME" , curtime)
         filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
-        filemngr.pcaptojson(testlogdir, "QNS")
+        filemngr.pcaptojson(testlogdir, "QNS", met_calc)
 
         mincmd = (
             "CURTIME=" + curtime + " "
@@ -103,7 +104,7 @@ class QTest:
         svpars = servers[serverid]['svpars_min']
         svpars = svpars.replace("$CURTIME" , curtime)
         filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
-        filemngr.pcaptojson(testlogdir, "MIN")
+        filemngr.pcaptojson(testlogdir, "MIN", met_calc)
 
     def run(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
@@ -114,6 +115,8 @@ class QTest:
         rootlogdir += "/"
         rootoutputdir += "/"
 
+        met_calc = MetricCalculator()
+
         with open(rootlogdir + "scenarios.json", "w+") as sc_file:
             json.dump(SCENARIOS, sc_file, indent=4, separators=(',', ': '))
         with open(rootoutputdir + "scenarios.json", "w+") as sc_file:
@@ -121,4 +124,6 @@ class QTest:
         for serverid, server in enumerate(self._implementations['servers']):
             for clientid, client in enumerate(self._implementations['clients']):
                 for scenario in SCENARIOS:
-                    self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario)
+                    self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, met_calc)
+
+        met_calc.saveMetrics(rootlogdir)
