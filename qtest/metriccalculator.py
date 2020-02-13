@@ -22,7 +22,7 @@ class MetricCalculator():
             serverside = "server" in file
             totals = self.getTcpDumpMetrics(file, isquic, serverside, id, totals)
 
-        print(self._metricsperfile)
+        #print(self._metricsperfile)
         #print(totals)
         self._metricsperfile[id]["avg_throughput"] /= 125.0
         self._metricsperfile[id]["avg_throughput"] /= totals["tp_time"]
@@ -122,8 +122,13 @@ class MetricCalculator():
                     large_ack = int(ackframe['quic.ack.largest_acknowledged'])
                     first_range = large_ack - int(ackframe['quic.ack.first_ack_range'])
                     acked_packets = []
+                    ackranges = [{
+                        "high_ack": large_ack,
+                        "low_ack": first_range
+                    }]
+                    ackranges = self.getAckRanges(ackframe, ackranges, first_range)
                     for index, pn_timestamp in totals["unacked_packets"].items():
-                        if index >= first_range and index <= large_ack:
+                        if self.isAcked(ackranges, index):
                             self._metricsperfile[id]["avg_rtt"] += (ack_timestamp - pn_timestamp)
                             totals["rtt_amount"] += 1
                             acked_packets.append(index)
@@ -147,6 +152,41 @@ class MetricCalculator():
             if frames["quic.frame_type"] == "2":
                     ackframe = frames
         return ackframe
+    
+    def getAckRanges(self, ackframe: dict, ackranges: list, large_ack: int):
+        if "quic.ack.gap" in ackframe:
+            ack_gaps = ackframe["quic.ack.gap"]
+            range_lengths = ackframe["quic.ack.ack_range"]
+            if isinstance(ack_gaps, list):
+                for index, gap in enumerate(ack_gaps):
+                    gap = int(gap) + 2
+                    large_ack -= gap
+                    range_length = int(range_lengths[index])
+                    low_ack = large_ack - range_length
+                    ackranges.append({
+                        "high_ack": large_ack,
+                        "low_ack": low_ack
+                    })
+                    large_ack = low_ack
+            else:
+                gap = int(ack_gaps) + 2
+                large_ack -= gap
+                range_length = int(range_lengths)
+                low_ack = large_ack - range_length
+                ackranges.append({
+                    "high_ack": large_ack,
+                    "low_ack": low_ack
+                })
+
+        return ackranges
+    
+    def isAcked(self, ackranges: list, pn: int):
+        acked = False
+        for ackrange in ackranges:
+            if pn >= ackrange['low_ack'] and pn <= ackrange['high_ack']:
+                acked = True
+                break
+        return acked
 
     def addThroughputBytes(self, id: int, bytes_amount: float, totals: dict, timestamp: float):
         self._metricsperfile[id]["avg_throughput"] += bytes_amount
