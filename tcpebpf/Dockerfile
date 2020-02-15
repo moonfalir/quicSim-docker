@@ -32,10 +32,9 @@ COPY bccscripts /bccscripts
 
 COPY simple_socket /simple_socket
 
-COPY entrypoint_min.sh .
-RUN chmod +x entrypoint_min.sh
+COPY tcp_server.py .
 
-# copy run script and run it
-COPY run_endpoint.sh .
-RUN chmod +x run_endpoint.sh
+COPY entrypoint_min.sh run_endpoint.sh ./
+RUN chmod +x entrypoint_min.sh run_endpoint.sh
+
 ENTRYPOINT [ "./run_endpoint.sh" ]
