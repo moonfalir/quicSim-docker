@@ -55,10 +55,10 @@ struct cwnd_info {
 	u32 min_rtt;
 	u32 smoothed_rtt;
 	u32 latest_rtt;
-	u32 ack_cnt;
-	u32 cnt;
-	u32 bic_K;
-	u32 bic_origin_point;
+	//u32 ack_cnt;
+	//u32 cnt;
+	//u32 bic_K;
+	//u32 bic_origin_point;
 };
 
 struct loss_info {
@@ -171,7 +171,7 @@ void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked
 		struct cwnd_info info = {};
 		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
-		const struct bictcp *ca = inet_csk_ca(sk);
+		//const struct bictcp *ca = inet_csk_ca(sk);
 
 		info.min_rtt = tp->rtt_min.s[0].v;
 		info.smoothed_rtt = tp->srtt_us >> 3;
@@ -181,12 +181,12 @@ void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked
 			info.pkts_in_flight = tp->packets_out - acked;
 		else
 			info.pkts_in_flight = 0;
-		info.ack_cnt = ca->ack_cnt;
-		info.cnt = ca->cnt;
-		info.bic_K = ca->bic_K;
-		info.bic_origin_point = ca->bic_origin_point;
-		if (tp->snd_cwnd != info.snd_cwnd)
-			cwnd_change.perf_submit(ctx, &info, sizeof(info));
+		//info.ack_cnt = ca->ack_cnt;
+		//info.cnt = ca->cnt;
+		//info.bic_K = ca->bic_K;
+		//info.bic_origin_point = ca->bic_origin_point;
+		//if (tp->snd_cwnd != info.snd_cwnd)
+		cwnd_change.perf_submit(ctx, &info, sizeof(info));
 	}
 }
 

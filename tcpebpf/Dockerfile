@@ -34,7 +34,7 @@ COPY simple_socket /simple_socket
 
 COPY tcp_server.py .
 
-COPY entrypoint_min.sh run_endpoint.sh ./
-RUN chmod +x entrypoint_min.sh run_endpoint.sh
+COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh ./
+RUN chmod +x entrypoint_min.sh run_endpoint.sh updateAndBuild.sh
 
 ENTRYPOINT [ "./run_endpoint.sh" ]
