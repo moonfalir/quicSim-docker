@@ -117,7 +117,7 @@ class MetricCalculator():
                 except KeyError as e:
                     print()
             #find RTT
-            totals = self.trackRTTValues(packet, id, totals, isserver)
+            totals = self.trackRTTValuesQUIC(packet, id, totals, isserver)
             #count retransmission
         else:
             if isserver:
@@ -158,7 +158,7 @@ class MetricCalculator():
                 except KeyError as e:
                     print()
             #find RTT
-            #totals = self.trackRTTValues(packet, id, totals, isserver)
+            totals = self.trackRTTValuesTCP(packet, id, totals, isserver)
             #count retransmission
         else:
             if isserver:
@@ -170,7 +170,7 @@ class MetricCalculator():
                     print()
 
         return totals
-    def trackRTTValues(self, packet: dict, id: int, totals: dict, isserver: bool):
+    def trackRTTValuesQUIC(self, packet: dict, id: int, totals: dict, isserver: bool):
         if isserver:
             try: 
                 if "quic.short" in packet['_source']['layers']["quic"]:
@@ -195,14 +195,48 @@ class MetricCalculator():
                         "high_ack": large_ack,
                         "low_ack": first_range
                     }]
-                    ackranges = self.getAckRanges(ackframe, ackranges, first_range)
+                    ackranges = self.getAckRangesQUIC(ackframe, ackranges, first_range)
                     for index, pn_timestamp in totals["unacked_packets"].items():
-                        if self.isAcked(ackranges, index):
+                        if self.isAcked(ackranges, index, True):
                             self._metricsperfile[id]["avg_rtt"] += (ack_timestamp - pn_timestamp)
                             totals["rtt_amount"] += 1
                             acked_packets.append(index)
                     for acked_packet in acked_packets:
                         del totals["unacked_packets"][acked_packet]
+            except TypeError as t:
+                print(t)
+            except KeyError as e:
+                print(e)
+        return totals
+
+    def trackRTTValuesTCP(self, packet: dict, id: int, totals: dict, isserver: bool):
+        if isserver:
+            try: 
+                pn = int(packet['_source']['layers']["tcp"]["tcp.seq"])
+                timestamp = float(packet['_source']['layers']['frame']['frame.time_relative']) * 1000
+                totals["unacked_packets"][pn] = timestamp
+            except TypeError as t:
+                print(t)
+            except KeyError as e:
+                print(e)
+        else:
+            try:
+                tcppacket = packet['_source']['layers']["tcp"] 
+                ack_timestamp = float(packet['_source']['layers']['frame']['frame.time_relative']) * 1000
+                large_ack = int(tcppacket['tcp.ack'])
+                acked_packets = []
+                ackranges = [{
+                    "high_ack": large_ack,
+                    "low_ack": 0
+                }]
+                ackranges = self.getAckRangesTCP(tcppacket, ackranges)
+                for index, pn_timestamp in totals["unacked_packets"].items():
+                    if self.isAcked(ackranges, index, False):
+                        self._metricsperfile[id]["avg_rtt"] += (ack_timestamp - pn_timestamp)
+                        totals["rtt_amount"] += 1
+                        acked_packets.append(index)
+                for acked_packet in acked_packets:
+                    del totals["unacked_packets"][acked_packet]
             except TypeError as t:
                 print(t)
             except KeyError as e:
@@ -222,7 +256,30 @@ class MetricCalculator():
                     ackframe = frames
         return ackframe
     
-    def getAckRanges(self, ackframe: dict, ackranges: list, large_ack: int):
+    def getAckRangesTCP(self, tcppacket: dict, ackranges: list):
+        if "tcp.options.sack_tree" in tcppacket['tcp.options_tree']:
+            sack = tcppacket['tcp.options_tree']['tcp.options.sack_tree']
+            left_egdes = sack['tcp.options.sack_le']
+            right_edges = sack['tcp.options.sack_re']
+            if isinstance(left_egdes, list):
+                for index, gap in enumerate(left_egdes):
+                    large_ack = int(right_edges[index])
+                    low_ack = int(left_egdes[index])
+                    ackranges.append({
+                        "high_ack": large_ack,
+                        "low_ack": low_ack
+                    })
+            else:
+                large_ack = int(right_edges)
+                low_ack = int(left_egdes)
+                ackranges.append({
+                    "high_ack": large_ack,
+                    "low_ack": low_ack
+                })
+
+        return ackranges
+
+    def getAckRangesQUIC(self, ackframe: dict, ackranges: list, large_ack: int):
         if "quic.ack.gap" in ackframe:
             ack_gaps = ackframe["quic.ack.gap"]
             range_lengths = ackframe["quic.ack.ack_range"]
@@ -249,12 +306,18 @@ class MetricCalculator():
 
         return ackranges
     
-    def isAcked(self, ackranges: list, pn: int):
+    def isAcked(self, ackranges: list, pn: int, isquic: bool):
         acked = False
-        for ackrange in ackranges:
-            if pn >= ackrange['low_ack'] and pn <= ackrange['high_ack']:
-                acked = True
-                break
+        if isquic:
+            for ackrange in ackranges:
+                if pn >= ackrange['low_ack'] and pn <= ackrange['high_ack']:
+                    acked = True
+                    break
+        else:
+            for ackrange in ackranges:
+                if pn >= ackrange['low_ack'] and pn < ackrange['high_ack']:
+                    acked = True
+                    break
         return acked
 
     def addThroughputBytes(self, id: int, bytes_amount: float, totals: dict, timestamp: float):
