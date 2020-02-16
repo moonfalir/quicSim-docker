@@ -1,10 +1,10 @@
 SCENARIOS = [
-    {
-        "name": "scenario1",
-        "bytesreq": "5000000",
-        "qns": "simple-p2p --delay=25ms --bandwidth=25Mbps --queue=25",
-        "min": "simple_p2p --delay 25ms --bandwidth 25 --queue 25"
-    },
+    #{
+    #    "name": "scenario1",
+    #    "bytesreq": "5000000",
+    #    "qns": "simple-p2p --delay=25ms --bandwidth=25Mbps --queue=25",
+    #    "min": "simple_p2p --delay 25ms --bandwidth 25 --queue 25"
+    #},
     #{
     #    "name": "scenario2",
     #    "bytesreq": "5000000",

@@ -99,7 +99,7 @@ class FileManager:
         with open(newpath, "w") as qlog_file:
             json.dump(newdata_file, qlog_file)
 
-    def pcaptojson(self, logdir: str, sim: str, met_calc: MetricCalculator):
+    def pcaptojson(self, logdir: str, sim: str, met_calc: MetricCalculator, isquic: bool):
         regex = re.compile("^(?![cs][lv]_).+\.pcap")
         files = []
         for dirpath, dirnames, filenames in os.walk(logdir):
@@ -116,11 +116,14 @@ class FileManager:
             split_path[len(split_path) - 1] = split_path[len(split_path) - 1].replace("pcap", "json")
             outputfile = sep.join(split_path)
             jsonfiles.append(outputfile)
-            cmd = self._tshark_path + " --no-duplicate-keys -r " + pcap + " -T json -o tls.keylog_file:" + sslkeyfile + " > " + outputfile
+            if os.path.isfile(sslkeyfile):
+                cmd = self._tshark_path + " --no-duplicate-keys -r " + pcap + " -T json -o tls.keylog_file:" + sslkeyfile + " > " + outputfile
+            else:
+                cmd = self._tshark_path + " --no-duplicate-keys -r " + pcap + " -T json > " + outputfile
             subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             os.remove(pcap)
+        if os.path.isfile(sslkeyfile):
+            os.remove(sslkeyfile)
 
-        os.remove(sslkeyfile)
-
-        met_calc.calculateMetrics(logdir, jsonfiles, self._serverqlog, True, True, sim)        
+        met_calc.calculateMetrics(logdir, jsonfiles, self._serverqlog, True, isquic, sim)        
         self._serverqlog = ""

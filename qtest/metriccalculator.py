@@ -26,7 +26,8 @@ class MetricCalculator():
         for file in tcpdumpfiles:
             serverside = "server" in file
             totals = self.getTcpDumpMetrics(file, isquic, serverside, id, totals)
-        self.getAvgCWND(qlogfile, id, totals)
+        if qlogfile != "":
+            self.getAvgCWND(qlogfile, id, totals)
 
         #print(self._metricsperfile)
         #print(totals)
@@ -88,7 +89,7 @@ class MetricCalculator():
             if isquic:
                 totals = self.processQuicPacket(packet, serverside, id, totals, isserver)
             else:
-                print("tcp")
+                totals = self.processTcpPacket(packet, serverside, id, totals, isserver)
         return totals
 
     def getServerIp(self, packet: dict, isquic: bool):
@@ -98,7 +99,10 @@ class MetricCalculator():
             else:
                 return ""
         else:
-            return ""
+            if packet['_source']['layers']['tcp']['tcp.flags_tree']['tcp.flags.syn'] == "1" and packet['_source']['layers']['tcp']['tcp.flags_tree']['tcp.flags.ack'] == "0":
+                return packet['_source']['layers']['ip']['ip.dst']
+            else:
+                return ""
     
     def checkPacketSendByServer(self, packet: dict, serverip: str):
         return serverip == packet["_source"]["layers"]["ip"]["ip.src"]
@@ -107,7 +111,7 @@ class MetricCalculator():
         if serverside:
             if isserver:
                 try:
-                    bytes_amount = float(packet['_source']['layers']["udp"]["udp.length"])
+                    bytes_amount = float(packet['_source']['layers']["frame"]["frame.len"])
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
                     totals = self.addThroughputBytes(id, bytes_amount, totals, timestamp)
                 except KeyError as e:
@@ -144,6 +148,20 @@ class MetricCalculator():
 
         return totals
 
+    def processTcpPacket(self, packet: dict, serverside: bool, id: int, totals: dict, isserver: bool):
+        if serverside:
+            if isserver:
+                try:
+                    bytes_amount = float(packet['_source']['layers']["frame"]["frame.len"])
+                    timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
+                    totals = self.addThroughputBytes(id, bytes_amount, totals, timestamp)
+                except KeyError as e:
+                    print()
+            #find RTT
+            #totals = self.trackRTTValues(packet, id, totals, isserver)
+            #count retransmission
+
+        return totals
     def trackRTTValues(self, packet: dict, id: int, totals: dict, isserver: bool):
         if isserver:
             try: 

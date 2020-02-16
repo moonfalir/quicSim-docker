@@ -15,9 +15,13 @@ class QTest:
     def __init__(self, implementations: list):
         self._implementations = implementations
     
-    def _run_testcase(self, serverid: int, clientid: int, rootlogdir: str, rootoutputdir: str, curtime: str, scenario: dict, met_calc: MetricCalculator):
-        servers = self._implementations['servers']
-        clients = self._implementations['clients']
+    def _run_testcase(self, serverid: int, clientid: int, rootlogdir: str, rootoutputdir: str, curtime: str, scenario: dict, met_calc: MetricCalculator, isquic: bool):
+        if isquic:
+            servers = self._implementations['quic_servers']
+            clients = self._implementations['quic_clients']
+        else:
+            servers = self._implementations['tcp_servers']
+            clients = self._implementations['tcp_clients']
         clientname = clients[clientid]['name']
         servername = servers[serverid]['name']
         if not os.path.isdir(rootlogdir + servername):
@@ -65,13 +69,14 @@ class QTest:
             outputfile.write(output.decode('utf-8'))
 
         filemngr = FileManager()
-        clpars = clients[clientid]['clpars_qns']
-        clpars = clpars.replace("$CURTIME" , curtime)
-        clpars = clpars.replace("$BYTESREQ", bytesreq)
-        svpars = servers[serverid]['svpars_qns']
-        svpars = svpars.replace("$CURTIME" , curtime)
-        filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
-        filemngr.pcaptojson(testlogdir, "QNS", met_calc)
+        if isquic:
+            clpars = clients[clientid]['clpars_qns']
+            clpars = clpars.replace("$CURTIME" , curtime)
+            clpars = clpars.replace("$BYTESREQ", bytesreq)
+            svpars = servers[serverid]['svpars_qns']
+            svpars = svpars.replace("$CURTIME" , curtime)
+            filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
+        filemngr.pcaptojson(testlogdir, "QNS", met_calc, isquic)
 
         mincmd = (
             "CURTIME=" + curtime + " "
@@ -98,13 +103,14 @@ class QTest:
         with open(testoutputdir + "/min.out", "w+") as outputfile:
             outputfile.write(output.decode('utf-8'))
         
-        clpars = clients[clientid]['clpars_min']
-        clpars = clpars.replace("$CURTIME" , curtime)
-        clpars = clpars.replace("$BYTESREQ", bytesreq)
-        svpars = servers[serverid]['svpars_min']
-        svpars = svpars.replace("$CURTIME" , curtime)
-        filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
-        filemngr.pcaptojson(testlogdir, "MIN", met_calc)
+        if isquic:
+            clpars = clients[clientid]['clpars_min']
+            clpars = clpars.replace("$CURTIME" , curtime)
+            clpars = clpars.replace("$BYTESREQ", bytesreq)
+            svpars = servers[serverid]['svpars_min']
+            svpars = svpars.replace("$CURTIME" , curtime)
+            filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
+        filemngr.pcaptojson(testlogdir, "MIN", met_calc, isquic)
 
     def run(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
@@ -121,9 +127,14 @@ class QTest:
             json.dump(SCENARIOS, sc_file, indent=4, separators=(',', ': '))
         with open(rootoutputdir + "scenarios.json", "w+") as sc_file:
             json.dump(SCENARIOS, sc_file, indent=4, separators=(',', ': '))
-        for serverid, server in enumerate(self._implementations['servers']):
-            for clientid, client in enumerate(self._implementations['clients']):
+        for serverid, server in enumerate(self._implementations['quic_servers']):
+            for clientid, client in enumerate(self._implementations['quic_clients']):
                 for scenario in SCENARIOS:
-                    self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, met_calc)
+                    self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, met_calc, True)
+
+        for serverid, server in enumerate(self._implementations['tcp_servers']):
+            for clientid, client in enumerate(self._implementations['tcp_clients']):
+                for scenario in SCENARIOS:
+                    self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, met_calc, False)
 
         met_calc.saveMetrics(rootlogdir)
