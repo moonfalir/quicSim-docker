@@ -160,6 +160,14 @@ class MetricCalculator():
             #find RTT
             #totals = self.trackRTTValues(packet, id, totals, isserver)
             #count retransmission
+        else:
+            if isserver:
+                try:
+                    bytes_amount = float(packet['_source']['layers']["tcp"]["tcp.len"])
+                    timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
+                    totals = self.addGoodputBytes(id, bytes_amount, totals, timestamp)
+                except KeyError as e:
+                    print()
 
         return totals
     def trackRTTValues(self, packet: dict, id: int, totals: dict, isserver: bool):
