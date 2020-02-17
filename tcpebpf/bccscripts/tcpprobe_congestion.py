@@ -17,9 +17,9 @@ b = BPF(src_file="ebpf_probes.c")
 #b.attach_kretprobe(event="bictcp_recalc_ssthresh", fn_name="trace_recalc_ssthresh")
 #b.attach_kprobe(event="bictcp_cwnd_event", fn_name="trace_cwnd_event")
 b.attach_kprobe(event="tcp_reno_cong_avoid", fn_name="trace_cong_avoid")
-b.attach_kretprobe(event="tcp_slow_start", fn_name="trace_slow_start")
+#b.attach_kprobe(event="tcp_slow_start", fn_name="trace_slow_start")
 #b.attach_kprobe(event="tcp_enter_loss", fn_name="trace_enter_loss")
-b.attach_kprobe(event="tcp_init_buffer_space", fn_name="trace_init_cong_control")
+#b.attach_kprobe(event="tcp_init_buffer_space", fn_name="trace_init_cong_control")
 #b.attach_kprobe(event="tcp_rcv_established", fn_name="trace_bytes_in_flight")
 
 qlog = {
@@ -199,8 +199,7 @@ def print_cwnd_event(cpu, data, size):
 def print_cwnd_change(cpu, data, size):
 	event = b["cwnd_change"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr))
-	print(event)
-	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100") or sender.__contains__("172.17.0.3"):
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		time = setTimeInfo(event.timestamp, True)
 		output_arr = []
 		output_arr.append("%.6f" % (abs(time) * 1000))
@@ -219,6 +218,7 @@ def print_cwnd_change(cpu, data, size):
 				#"origin_point": str(event.bic_origin_point)
 			}
 		)
+		
 		qlog["traces"][0]["events"].append(output_arr)
 	#if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 	#	time = setTimeInfo(event.timestamp, False)
@@ -273,7 +273,7 @@ def print_loss_event(cpu, data, size):
 def print_init_cong_control(cpu, data, size):
 	event = b["init_event"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr))
-	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100") or sender.__contains__("172.17.0.3"):
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		time = setTimeInfo(event.timestamp, True)
 		output_arr = []
 		output_arr.append("%.6f" % (abs(time) * 1000))
