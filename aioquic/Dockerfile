@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
  iproute2
 
 # install aioquic
-RUN git clone https://github.com/aiortc/aioquic
+RUN git clone https://github.com/moonfalir/aioquic
 
 WORKDIR /aioquic
 
