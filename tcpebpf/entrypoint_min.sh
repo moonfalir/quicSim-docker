@@ -11,11 +11,13 @@ if [ "$ROLE" == "client" ]; then
 
     #sleep 2
 
-    python3 /simple_socket/h0_client.py $CLIENT_PARAMS 
+    #python3 /simple_socket/h0_client.py $CLIENT_PARAMS 
+    iperf3 $CLIENT_PARAMS
 
     #wait $EBPF_PID
 elif [ "$ROLE" == "server" ]; then
     #tcpdump -i server-eth0 -w /logs/$SERVER_PARAMS.pcap &
 
-    python3 /simple_socket/h0_server.py $SERVER_PARAMS
+    #python3 /simple_socket/h0_server.py $SERVER_PARAMS
+    iperf3 $SERVER_PARAMS
 fi

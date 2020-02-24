@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y \
  tcpdump \
  net-tools \
  iputils-ping \
- iproute2
+ iproute2 \
+ iperf3
 
 RUN git clone https://github.com/iovisor/bcc && mkdir bcc/build
 
