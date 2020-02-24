@@ -4,7 +4,8 @@ CLIENT_PARAMS="-i eth1 -q /logs/clientmnquant_$CURTIME.qlog http://10.0.0.251:44
 SERVER="quant" \
 SERVER_PARAMS="-t 2 -i eth1 -q /logs/servermnquant_$CURTIME.qlog" \
 SCENARIO="simple_p2p --delay 25ms --bandwidth 5 --queue 25" \
-LOGDIR="$PWD" \
+CLIENT_LOGS="$PWD/logs" \
+SERVER_LOGS="$PWD/logs" \
 CL_COMMIT="" \
 SV_COMMIT="" \
 docker-compose -f ../containernet/docker-compose.yml up
