@@ -50,7 +50,10 @@ class MetricCalculator():
         qlog = json.loads(data)
         events = qlog["traces"][0]["events"]
         event_fields = [x.lower() for x in qlog["traces"][0]["event_fields"]]
-        event_type_id = event_fields.index("event_type")
+        try:
+            event_type_id = event_fields.index("event_type")
+        except ValueError as e:
+            event_type_id = event_fields.index("event")
         data_id = event_fields.index("data")
 
         prev_cwnd = -1.0
