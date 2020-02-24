@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
  python3 
 
 # install quant
-RUN git clone https://github.com/NTAP/quant
+RUN git clone https://github.com/moonfalir/quant
 
 WORKDIR ./quant
 
