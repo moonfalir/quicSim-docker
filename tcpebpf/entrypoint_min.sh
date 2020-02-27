@@ -9,5 +9,6 @@ if [ "$ROLE" == "client" ]; then
     iperf3 $CLIENT_PARAMS
 elif [ "$ROLE" == "server" ]; then
     #tcpdump -i server-eth0 -w /logs/$SERVER_PARAMS.pcap &
+    echo "iperf3" > /logs/sv_commit.txt
     python3 captureAndServe.py
 fi

@@ -42,6 +42,9 @@ class QTest:
 
         bytesreq = scenario["bytesreq"]
         logging.debug("Request: %s bytes", bytesreq)
+        tcpqns_config = ""
+        if not isquic:
+            tcpqns_config = "-f ../quic-network-simulator/docker-compose.tcp.yml "
         qnscmd = (
             "CURTIME=" + curtime + " "
             "SERVER_LOGS=" + testlogdir + " "
@@ -54,7 +57,7 @@ class QTest:
             "SERVER_PARAMS=\"" + servers[serverid]['svpars_qns'] + "\" "
             "CL_COMMIT=\"" + clients[clientid]['clcommit'] + "\" "
             "SV_COMMIT=\"" + servers[serverid]['svcommit'] + "\" "
-            "docker-compose -f ../quic-network-simulator/docker-compose.yml up --abort-on-container-exit"
+            "docker-compose -f ../quic-network-simulator/docker-compose.yml " + tcpqns_config + "up --abort-on-container-exit"
         )
 
         print("Server: " + servername + ". Client: " + clientname + ". Test case: " + scenario["qns"] + ". Simulation: QNS")
@@ -69,20 +72,22 @@ class QTest:
             outputfile.write(output.decode('utf-8'))
 
         filemngr = FileManager()
-        if isquic:
-            clpars = clients[clientid]['clpars_qns']
-            clpars = clpars.replace("$CURTIME" , curtime)
-            clpars = clpars.replace("$BYTESREQ", bytesreq)
-            svpars = servers[serverid]['svpars_qns']
-            svpars = svpars.replace("$CURTIME" , curtime)
-            filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
+        
+        clpars = clients[clientid]['clpars_qns']
+        clpars = clpars.replace("$CURTIME" , curtime)
+        clpars = clpars.replace("$BYTESREQ", bytesreq)
+        svpars = servers[serverid]['svpars_qns']
+        svpars = svpars.replace("$CURTIME" , curtime)
+        filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
         filemngr.pcaptojson(testlogdir, "QNS", met_calc, isquic)
-
+        scenario_min = scenario["min"]
+        if not isquic:
+            scenario_min += " -k"
         mincmd = (
             "CURTIME=" + curtime + " "
             "SERVER_LOGS=" + testlogdir + " "
             "CLIENT_LOGS=" + testlogdir + " "
-            "SCENARIO=\"" + scenario["min"] + "\" "
+            "SCENARIO=\"" + scenario_min + "\" "
             "CLIENT=" + clientname + " "
             "SERVER=" + servername + " "
             "BYTESREQ=" + bytesreq + " "
@@ -102,14 +107,13 @@ class QTest:
 
         with open(testoutputdir + "/min.out", "w+") as outputfile:
             outputfile.write(output.decode('utf-8'))
-        
-        if isquic:
-            clpars = clients[clientid]['clpars_min']
-            clpars = clpars.replace("$CURTIME" , curtime)
-            clpars = clpars.replace("$BYTESREQ", bytesreq)
-            svpars = servers[serverid]['svpars_min']
-            svpars = svpars.replace("$CURTIME" , curtime)
-            filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
+         
+        clpars = clients[clientid]['clpars_min']
+        clpars = clpars.replace("$CURTIME" , curtime)
+        clpars = clpars.replace("$BYTESREQ", bytesreq)
+        svpars = servers[serverid]['svpars_min']
+        svpars = svpars.replace("$CURTIME" , curtime)
+        filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
         filemngr.pcaptojson(testlogdir, "MIN", met_calc, isquic)
 
     def run(self):

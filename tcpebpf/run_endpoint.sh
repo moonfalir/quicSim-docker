@@ -14,6 +14,7 @@ if [ "$ROLE" == "client" ]; then
     
     iperf3 $CLIENT_PARAMS
 elif [ "$ROLE" == "server" ]; then
+    echo "iperf3" > /logs/sv_commit.txt
     python3 tcp_server.py --port 57830
     /wait-for-it.sh sim:57832 -s -t 30   
     #tcpdump -i eth0 -w /logs/$CURTIME.pcap &
