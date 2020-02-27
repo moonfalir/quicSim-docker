@@ -19,7 +19,7 @@ b = BPF(src_file="ebpf_probes.c")
 b.attach_kprobe(event="tcp_reno_cong_avoid", fn_name="trace_cong_avoid")
 #b.attach_kprobe(event="tcp_slow_start", fn_name="trace_slow_start")
 #b.attach_kprobe(event="tcp_enter_loss", fn_name="trace_enter_loss")
-#b.attach_kprobe(event="tcp_init_buffer_space", fn_name="trace_init_cong_control")
+b.attach_kprobe(event="tcp_init_buffer_space", fn_name="trace_init_cong_control")
 #b.attach_kprobe(event="tcp_rcv_established", fn_name="trace_bytes_in_flight")
 
 qlog = {
@@ -218,7 +218,6 @@ def print_cwnd_change(cpu, data, size):
 				#"origin_point": str(event.bic_origin_point)
 			}
 		)
-		
 		qlog["traces"][0]["events"].append(output_arr)
 	#if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 	#	time = setTimeInfo(event.timestamp, False)
@@ -349,17 +348,11 @@ b["cwnd_change"].open_perf_buffer(print_cwnd_change)
 b["init_event"].open_perf_buffer(print_init_cong_control)
 #b["fc_event"].open_perf_buffer(print_bytes_in_flight)
 
-#timeout of 30 seconds
-timeout = ti.time() + 30*1
 if len(sys.argv) == 2:
 	outputfile = sys.argv[1]
 else:
 	outputfile = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
 while 1:
-	if ti.time() > timeout:
-		with open('/logs/' + outputfile + '.qlog', 'w') as f:
-			f.write(json.dumps(qlog))
-		exit()
 	try:
 		b.perf_buffer_poll()
 	except KeyboardInterrupt:

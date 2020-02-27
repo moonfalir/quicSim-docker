@@ -33,7 +33,7 @@ COPY bccscripts /bccscripts
 
 COPY simple_socket /simple_socket
 
-COPY tcp_server.py .
+COPY tcp_server.py captureAndServe.py ./
 
 COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh ./
 RUN chmod +x entrypoint_min.sh run_endpoint.sh updateAndBuild.sh
