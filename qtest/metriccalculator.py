@@ -102,7 +102,7 @@ class MetricCalculator():
             else:
                 return ""
         else:
-            if packet['_source']['layers']['tcp']['tcp.flags_tree']['tcp.flags.syn'] == "1" and packet['_source']['layers']['tcp']['tcp.flags_tree']['tcp.flags.ack'] == "0":
+            if packet['_source']['layers']['tcp']['tcp.flags_tree']['tcp.flags.syn'] == "1" and packet['_source']['layers']['tcp']['tcp.flags_tree']['tcp.flags.ack'] == "1":
                 return packet['_source']['layers']['ip']['ip.dst']
             else:
                 return ""
