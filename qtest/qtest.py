@@ -12,10 +12,12 @@ class LogFileFormatter(logging.Formatter):
 
 class QTest:
     _implementations = []
-    def __init__(self, implementations: list):
+    _runs = 1
+    def __init__(self, implementations: list, runs: int):
         self._implementations = implementations
+        self._runs = runs
     
-    def _run_testcase(self, serverid: int, clientid: int, rootlogdir: str, rootoutputdir: str, curtime: str, scenario: dict, met_calc: MetricCalculator, isquic: bool):
+    def _run_testcase(self, serverid: int, clientid: int, rootlogdir: str, rootoutputdir: str, curtime: str, scenario: dict, met_calc: MetricCalculator, isquic: bool, run: int):
         if isquic:
             servers = self._implementations['quic_servers']
             clients = self._implementations['quic_clients']
@@ -36,6 +38,13 @@ class QTest:
 
         testlogdir += "/" + scenario['name'] 
         testoutputdir += "/" + scenario['name']    
+
+        if not os.path.isdir(testlogdir):
+            os.makedirs(testlogdir)
+            os.makedirs(testoutputdir)  
+
+        testlogdir += "/run" + str(run + 1)
+        testoutputdir += "/run" + str(run + 1)    
 
         os.makedirs(testlogdir)
         os.makedirs(testoutputdir)  
@@ -134,11 +143,13 @@ class QTest:
         for serverid, server in enumerate(self._implementations['quic_servers']):
             for clientid, client in enumerate(self._implementations['quic_clients']):
                 for scenario in SCENARIOS:
-                    self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, met_calc, True)
+                    for run in range(0, self._runs):
+                        self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, met_calc, True, run)
 
         for serverid, server in enumerate(self._implementations['tcp_servers']):
             for clientid, client in enumerate(self._implementations['tcp_clients']):
                 for scenario in SCENARIOS:
-                    self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, met_calc, False)
+                    for run in range(0, self._runs):
+                        self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, met_calc, False, run)
 
         met_calc.saveMetrics(rootlogdir)
