@@ -5,19 +5,9 @@
 # - SERVER_PARAMS contains user-supplied command line parameters
 # - CLIENT_PARAMS contains user-supplied command line parameters
 
-if [ "$ROLE" == "client" ]; then 
-    #python /bccscripts/tcpprobe_congestion.py $CLIENT_PARAMS &
-    #EBPF_PID=$!
-
-    #sleep 2
-
-    #python3 /simple_socket/h0_client.py $CLIENT_PARAMS 
+if [ "$ROLE" == "client" ]; then  
     iperf3 $CLIENT_PARAMS
-
-    #wait $EBPF_PID
 elif [ "$ROLE" == "server" ]; then
     #tcpdump -i server-eth0 -w /logs/$SERVER_PARAMS.pcap &
-
-    #python3 /simple_socket/h0_server.py $SERVER_PARAMS
-    iperf3 $SERVER_PARAMS
+    python3 captureAndServe.py
 fi

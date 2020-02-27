@@ -37,19 +37,17 @@ class Simple_p2p:
         info('*** Adding controller\n')
         net.addController('c0')
         info('*** Adding docker containers\n')
-        client_vs = [cl_logdir + ':/logs']
+        server_vs = [sv_logdir + ':/logs']
         if sim_args.k:
-            client_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
-            #server_params = curtime
-            #client_params = curtime
+            server_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
         server = net.addDocker('server', ip='10.0.0.251',
                                environment={"ROLE": "server", "SERVER_PARAMS": server_params, "COMMIT": svcommit},
                                dimage=server_image + ":latest",
-                               volumes=[sv_logdir + ':/logs'])
+                               volumes=server_vs)
         client = net.addDocker('client', ip='10.0.0.252', 
                                environment={"ROLE": "client", "CLIENT_PARAMS": client_params, "COMMIT": clcommit},
                                dimage=client_image + ":latest", 
-                               volumes=client_vs)
+                               volumes=[cl_logdir + ':/logs'])
 
         info('*** Adding switches\n')
         s1 = net.addSwitch('s1')
@@ -64,10 +62,16 @@ class Simple_p2p:
         info('*** Starting network\n')
         net.start()
         capture = PacketCapture()
-        server.cmd(entrypoint + " &" )
+        if sim_args.k:
+            client.cmd(entrypoint + " &")
+        else:
+            server.cmd(entrypoint + " &" )
         capture.startCapture()
         info('\n' + entrypoint + '\n')
-        info(client.cmd(entrypoint) + "\n")
+        if sim_args.k:
+            info(server.cmd(entrypoint) + "\n")
+        else:
+            info(client.cmd(entrypoint) + "\n")
         # Wait some time to allow server finish writing to log file
         sleep(3)
         capture.stopCapture()
