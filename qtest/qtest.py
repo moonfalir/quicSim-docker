@@ -88,7 +88,7 @@ class QTest:
         svpars = servers[serverid]['svpars_qns']
         svpars = svpars.replace("$CURTIME" , curtime)
         filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
-        filemngr.pcaptojson(testlogdir, "QNS", met_calc, isquic)
+        filemngr.pcaptojson(testlogdir, "QNS", met_calc, isquic, run)
         scenario_min = scenario["min"]
         if not isquic:
             scenario_min += " -k"
@@ -123,7 +123,7 @@ class QTest:
         svpars = servers[serverid]['svpars_min']
         svpars = svpars.replace("$CURTIME" , curtime)
         filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
-        filemngr.pcaptojson(testlogdir, "MIN", met_calc, isquic)
+        filemngr.pcaptojson(testlogdir, "MIN", met_calc, isquic, run)
 
     def run(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
