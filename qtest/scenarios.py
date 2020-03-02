@@ -1,16 +1,16 @@
 SCENARIOS = [
-    #{
-    #    "name": "scenario1",
-    #    "bytesreq": "5000000",
-    #    "qns": "simple-p2p --delay=25ms --bandwidth=25Mbps --queue=25",
-    #    "min": "simple_p2p --delay 25ms --bandwidth 25 --queue 25"
-    #},
-    #{
-    #    "name": "scenario2",
-    #    "bytesreq": "5000000",
-    #    "qns": "simple-p2p --delay=25ms --bandwidth=50Mbps --queue=208",
-    #    "min": "simple_p2p --delay 25ms --bandwidth 50 --queue 208"
-    #},
+    {
+        "name": "dl25_bw20_q84",
+        "bytesreq": "10000000",
+        "qns": "simple-p2p --delay=25ms --bandwidth=20Mbps --queue=84",
+        "min": "simple_p2p --delay 25ms --bandwidth 20 --queue 84"
+    },
+    {
+        "name": "dl25_bw10_q42",
+        "bytesreq": "10000000",
+        "qns": "simple-p2p --delay=25ms --bandwidth=10Mbps --queue=42",
+        "min": "simple_p2p --delay 25ms --bandwidth 10 --queue 42"
+    }#,
     #{
     #    "name": "scenario3",
     #    "bytesreq": "5000000",
@@ -47,10 +47,10 @@ SCENARIOS = [
     #    "qns": "simple-p2p --delay=20ms --bandwidth=10Mbps --queue=16",
     #    "min": "simple_p2p --delay 20ms --bandwidth 10 --queue 16"
     #},
-    {
-        "name": "scenario9",
-        "bytesreq": "5000000",
-        "qns": "simple-p2p --delay=20ms --bandwidth=10Mbps --queue=49",
-        "min": "simple_p2p --delay 20ms --bandwidth 10 --queue 49"
-    }
+    #{
+    #    "name": "scenario9",
+    #    "bytesreq": "10000000",
+    #    "qns": "simple-p2p --delay=20ms --bandwidth=10Mbps --queue=49",
+    #    "min": "simple_p2p --delay 20ms --bandwidth 10 --queue 49"
+    #}
 ]
