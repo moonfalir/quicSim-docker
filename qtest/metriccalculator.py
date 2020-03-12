@@ -2,7 +2,7 @@ import os, json
 
 class MetricCalculator():
     _metricsperfile = []
-    _json_columns = ['name', 'sim', 'avg_goodput', 'avg_throughput', 'avg_rtt', 'avg_cwnd']
+    _json_columns = ['name', 'sim', 'mdn_goodput', 'mdn_throughput', 'mdn_rtt', 'mdn_cwnd']
     
     def calculateMetrics(self, logdir: str, tcpdumpfiles: list, qlogfile: str, istcpdump: bool, isquic: bool, sim: str, run: int):
         split_dir = logdir.split("/")
@@ -41,20 +41,20 @@ class MetricCalculator():
             self._metricsperfile.append({
                 "name": name,
                 "sim": sim,
-                "avg_goodput": 0.0,
-                "avg_throughput": 0.0,
-                "avg_rtt": 0.0,
-                "avg_cwnd": 0.0,
+                "mdn_goodput": 0.0,
+                "mdn_throughput": 0.0,
+                "mdn_rtt": 0.0,
+                "mdn_cwnd": 0.0,
                 "runs": []
             })
             id = len(self._metricsperfile) - 1
         else:
             id = next((index for (index, d) in enumerate(self._metricsperfile) if d["name"] == name and d["sim"] == sim), None)
         
-        self._metricsperfile[id]["avg_goodput"] += run_avgs["avg_goodput"]
-        self._metricsperfile[id]["avg_throughput"] += run_avgs["avg_throughput"]
-        self._metricsperfile[id]["avg_rtt"] += run_avgs["avg_rtt"]
-        self._metricsperfile[id]["avg_cwnd"] += run_avgs["avg_cwnd"]
+        #self._metricsperfile[id]["mdn_goodput"] += run_avgs["mdn_goodput"]
+        #self._metricsperfile[id]["mdn_throughput"] += run_avgs["mdn_throughput"]
+        #self._metricsperfile[id]["mdn_rtt"] += run_avgs["mdn_rtt"]
+        #self._metricsperfile[id]["mdn_cwnd"] += run_avgs["mdn_cwnd"]
         self._metricsperfile[id]["runs"].append(run_avgs)
         #print(self._metricsperfile)
 
@@ -349,12 +349,42 @@ class MetricCalculator():
         totals["gp_time"] = timestamp
         return totals, run_avgs
     
+    def getMedianValues(self, runs: list):
+        rtts = []
+        cwnds = []
+        goodputs = []
+        throughputs = []
+        medians = {}
+
+        for run in runs:
+            rtts.append(run["avg_rtt"])
+            cwnds.append(run["avg_cwnd"])
+            goodputs.append(run["avg_goodput"])
+            throughputs.append(run["avg_throughput"])
+
+        rtts.sort()
+        cwnds.sort()
+        goodputs.sort()
+        throughputs.sort()
+
+        middle = int(len(rtts) / 2)
+        if len(rtts) == 1:
+            middle = 0
+
+        medians["mdn_rtt"] = rtts[middle]
+        medians["mdn_cwnd"] = cwnds[middle]
+        medians["mdn_goodput"] = goodputs[middle]
+        medians["mdn_throughput"] = throughputs[middle]
+
+        return medians
+
     def saveMetrics(self, outputdir: str):
         #TODO avgs for all runs
         for id in range(0, len(self._metricsperfile)):
-            self._metricsperfile[id]["avg_goodput"] /= len(self._metricsperfile[id]["runs"])
-            self._metricsperfile[id]["avg_throughput"] /= len(self._metricsperfile[id]["runs"])
-            self._metricsperfile[id]["avg_rtt"] /= len(self._metricsperfile[id]["runs"])
-            self._metricsperfile[id]["avg_cwnd"] /= len(self._metricsperfile[id]["runs"])
+            medians = self.getMedianValues(self._metricsperfile[id]["runs"])
+            self._metricsperfile[id]["mdn_goodput"] = medians["mdn_goodput"]
+            self._metricsperfile[id]["mdn_throughput"] = medians["mdn_throughput"]
+            self._metricsperfile[id]["mdn_rtt"] = medians["mdn_rtt"]
+            self._metricsperfile[id]["mdn_cwnd"] = medians["mdn_cwnd"]
         with open(outputdir + "/metrics.json", mode='w') as metrics_file:
             json.dump(self._metricsperfile, metrics_file)
