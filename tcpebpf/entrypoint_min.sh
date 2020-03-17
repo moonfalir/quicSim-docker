@@ -6,9 +6,11 @@
 # - CLIENT_PARAMS contains user-supplied command line parameters
 
 if [ "$ROLE" == "client" ]; then  
+    ethtool -K client-eth0 tx off
     iperf3 $CLIENT_PARAMS
 elif [ "$ROLE" == "server" ]; then
     #tcpdump -i server-eth0 -w /logs/$SERVER_PARAMS.pcap &
+    ethtool -K server-eth0 tx off
     echo "iperf3" > /logs/sv_commit.txt
     python3 captureAndServe.py
 fi
