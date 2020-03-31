@@ -100,30 +100,14 @@ class FileManager:
             json.dump(newdata_file, qlog_file)
 
     def pcaptojson(self, logdir: str, sim: str, met_calc: MetricCalculator, isquic: bool, run: int):
-        regex = re.compile("^(?![cs][lv]_).+\.pcap")
-        files = []
+        convertcmd = "docker run --env SIM=" + sim + " -v " + logdir + ":/logs:rw qtest-tshark"
+        r = subprocess.run(convertcmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+        regex = re.compile("^(?![cs][lv]_).+\.json")
+        jsonfiles = []
         for dirpath, dirnames, filenames in os.walk(logdir):
             for f in filenames:
                 if regex.match(f):
-                    files.append(os.path.join(dirpath, f))
-
-        sslkeyfile = logdir + "/" + "ssl-key.log"
-        sep="/"
-        jsonfiles = []
-        for pcap in files:
-            split_path = pcap.split(sep="/")
-            split_path[len(split_path) - 1] = sim + "-" + split_path[len(split_path) - 1]
-            split_path[len(split_path) - 1] = split_path[len(split_path) - 1].replace("pcap", "json")
-            outputfile = sep.join(split_path)
-            jsonfiles.append(outputfile)
-            if os.path.isfile(sslkeyfile):
-                cmd = self._tshark_path + " --no-duplicate-keys -r " + pcap + " -T json -o tls.keylog_file:" + sslkeyfile + " > " + outputfile
-            else:
-                cmd = self._tshark_path + " --no-duplicate-keys -r " + pcap + " -T json > " + outputfile
-            subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            os.remove(pcap)
-        if os.path.isfile(sslkeyfile):
-            os.remove(sslkeyfile)
-
+                    jsonfiles.append(os.path.join(dirpath, f))
         met_calc.calculateMetrics(logdir, jsonfiles, self._serverqlog, True, isquic, sim, run)        
         self._serverqlog = ""
