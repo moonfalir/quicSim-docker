@@ -109,5 +109,7 @@ class FileManager:
             for f in filenames:
                 if regex.match(f):
                     jsonfiles.append(os.path.join(dirpath, f))
-        met_calc.calculateMetrics(logdir, jsonfiles, self._serverqlog, True, isquic, sim, run)        
+        met_calc.calculateMetrics(logdir, jsonfiles, self._serverqlog, True, isquic, sim, run)
+        for jsonfile in jsonfiles:
+            os.remove(jsonfile)     
         self._serverqlog = ""
