@@ -4,7 +4,7 @@ FROM quic-network-simulator-endpoint:latest
 RUN apt-get update && apt-get install -y gnupg
 
 RUN echo deb http://deb.debian.org/debian buster-backports main contrib non-free | tee /etc/apt/sources.list.d/buster-backports.list && \
- apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC && apt-get update
+ apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 04EE7237B7D453EC && apt-get update
 
 RUN apt-get update && apt-get install -y \
  git \
