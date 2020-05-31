@@ -4,6 +4,7 @@ dockercl = docker.from_env()
 
 dockercl.images.build(path="../quic-network-simulator/endpoint", tag="quic-network-simulator-endpoint")
 dockercl.images.build(path="../quic-network-simulator/sim", tag="sim")
+dockercl.images.build(path="../wireshark", tag="qtest-tshark")
 
 dockercl.images.build(path="../containernet", tag="containernet")
 
