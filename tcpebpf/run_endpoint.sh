@@ -17,6 +17,6 @@ elif [ "$ROLE" == "server" ]; then
     echo "iperf3" > /logs/sv_commit.txt
     python3 tcp_server.py --port 57830
     /wait-for-it.sh sim:57832 -s -t 30   
-    #tcpdump -i eth0 -w /logs/$CURTIME.pcap &
+    
     python3 captureAndServe.py
 fi

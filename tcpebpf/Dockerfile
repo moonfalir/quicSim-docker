@@ -37,8 +37,6 @@ RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr && make && make install
 
 COPY bccscripts /bccscripts
 
-COPY simple_socket /simple_socket
-
 COPY tcp_server.py captureAndServe.py ./
 
 COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh ./
