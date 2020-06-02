@@ -10,27 +10,45 @@ from argparse import ArgumentParser
 
 
 servers = [
-    '1',
-    '2',
-    '3',
-    '4'
+    '172.19.13.223',
+    '172.19.13.224',
+    '172.19.13.225',
+    '172.19.13.226',
+    '172.19.13.227',
 ]
-def serverThread(s_ip, testscenarios, username, password):
+def serverThread(id, s_ip, testscenarios, username, password):
     serverssh = paramiko.SSHClient()
     serverssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    #serverssh.connect(hostname=s_ip, username=username, password=password)
+    serverssh.connect(hostname=s_ip, username=username, password=password)
+
+    shell = serverssh.invoke_shell()
+    shell.send("cd ./quicSim-docker/qtest\n")
+    shell.recv(9999)
+
+    shell.send("echo \'" + json.dumps(testscenarios) + "\' > test.json\n")
+    shell.recv(9999)
+
+    shell.send("sudo python3 run.py --distid " + str(id) + "\n")
+    shell.send(password + "\n")
+
+    while True:
+        if shell.recv_ready():
+            resp = shell.recv(9999).decode("utf-8")
+            if "Distributed testcases complete" in resp:
+                break
+            
     # run through testscenarios
         # create directory if needed
         # run docker command
         # process wireshark info and metrics
         # append server to list
-    #return testcase metrics
-    if s_ip == "1":
-        print("echo \'" + json.dumps(testscenarios) + "\' > test.json")
+    print("server " + s_ip + " testcases complete")
 
 def main():
     qtest_parser = ArgumentParser(description='Run qtest simulations over cluster')
     qtest_parser.add_argument('--runs', action='store', type=int, nargs='?', const=1, default=1, help='Amount of runs of a single test')
+    qtest_parser.add_argument('--usr', action='store', type=str, nargs='?',required=True, help='Username used for ssh connections')
+    qtest_parser.add_argument('--pwd', action='store', type=str, nargs='?',required=True, help='Password used for ssh connections')
     qtest_args = qtest_parser.parse_args()
 
     # gather all info for each test run
@@ -54,7 +72,7 @@ def main():
     # run server threads
     threads = []
     for i in range(len(servers)):
-        x = threading.Thread(target=serverThread, args=(servers[i],splittestcases[i], "test", "test2"))
+        x = threading.Thread(target=serverThread, args=(i, servers[i],splittestcases[i], "test", "test2"))
         threads.append(x)
         x.start()
 

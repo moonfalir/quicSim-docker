@@ -17,6 +17,7 @@ if qtest_args.distid > -1:
         implementations=[],
         runs=0
     ).runDistributed(qtest_args.distid)
+    print("Distributed testcases complete")
 else:
     QTest(
         implementations=implementations,
