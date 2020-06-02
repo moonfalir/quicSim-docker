@@ -12,10 +12,14 @@ services:
     pid: "host"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - $SERVER_LOGS:/logs
     environment:
       - SERVER=$SERVER
       - SERVER_PARAMS=$SERVER_PARAMS
       - CLIENT=$CLIENT
       - CLIENT_PARAMS=$CLIENT_PARAMS
       - SCENARIO=$SCENARIO
-      - LOGDIR=$LOGDIR
+      - CL_COMMIT=$CL_COMMIT
+      - SV_COMMIT=$SV_COMMIT
+      - SERVER_LOGS=$SERVER_LOGS
+      - CLIENT_LOGS=$CLIENT_LOGS

@@ -1,5 +1,12 @@
 /*/logs
 
+/*/__pycache__
+
 /.vscode
 
 *.pyc
+
+/*/outputs
+
+/qtest/singletest
+/qtest/runTest.sh

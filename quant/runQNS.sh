@@ -5,4 +5,6 @@ SERVER="quant" \
 SERVER_PARAMS="-d ./ -i eth0 -q /logs/serverquant_$CURTIME.qlog" \
 SCENARIO="simple-p2p --delay=15ms --bandwidth=10Mbps --queue=25" \
 LOGDIR="$PWD/logs" \
+CL_COMMIT="" \
+SV_COMMIT="" \
 docker-compose -f ../quic-network-simulator/docker-compose.yml up --abort-on-container-exit

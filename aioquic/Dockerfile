@@ -11,17 +11,15 @@ RUN apt-get update && apt-get install -y \
  iproute2
 
 # install aioquic
-RUN git clone https://github.com/aiortc/aioquic
+RUN git clone https://github.com/moonfalir/aioquic
 
 WORKDIR /aioquic
 
 RUN pip3 install -e . && pip3 install aiofiles asgiref httpbin starlette wsproto
 
-COPY entrypoint_min.sh .
-RUN chmod +x entrypoint_min.sh
+COPY tcp_server.py .
 
-# copy run base script and run it
-COPY run_endpoint.sh .
-RUN chmod +x run_endpoint.sh
+COPY entrypoint_min.sh run_endpoint.sh updateAndBuild.sh ./
+RUN chmod +x entrypoint_min.sh run_endpoint.sh updateAndBuild.sh
 
 ENTRYPOINT [ "./run_endpoint.sh" ]

@@ -10,17 +10,13 @@
 # - CURTIME contains the timestamp of the start of the simulation
 
 if [ "$ROLE" == "client" ]; then
-    /wait-for-it.sh sim:57832 -s -t 30    
-    python /bccscripts/tcpprobe_congestion.py $CURTIME &
-    EBPF_PID=$!
-
-    sleep 2
-
-    python3 /simple_socket/h0_client.py $CLIENT_PARAMS
-
-    wait $EBPF_PID
+    python3 tcp_server.py --port 57831 
+    
+    iperf3 $CLIENT_PARAMS
 elif [ "$ROLE" == "server" ]; then
-    tcpdump -i eth0 -w /logs/$CURTIME.pcap &
-
-    python3 /simple_socket/h0_server.py $SERVER_PARAMS
+    echo "iperf3" > /logs/sv_commit.txt
+    python3 tcp_server.py --port 57830
+    /wait-for-it.sh sim:57832 -s -t 30   
+    #tcpdump -i eth0 -w /logs/$CURTIME.pcap &
+    python3 captureAndServe.py
 fi

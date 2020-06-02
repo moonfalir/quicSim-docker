@@ -5,4 +5,6 @@ SERVER="picoquic" \
 SERVER_PARAMS="-1 -L -b /logs/serverpico_qns.log" \
 SCENARIO="simple-p2p --delay=25ms --bandwidth=5Mbps --queue=25" \
 LOGDIR="../picoquic/logs" \
+CL_COMMIT="" \
+SV_COMMIT="" \
 docker-compose -f ../quic-network-simulator/docker-compose.yml up --abort-on-container-exit

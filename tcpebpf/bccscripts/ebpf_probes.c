@@ -55,10 +55,10 @@ struct cwnd_info {
 	u32 min_rtt;
 	u32 smoothed_rtt;
 	u32 latest_rtt;
-	u32 ack_cnt;
-	u32 cnt;
-	u32 bic_K;
-	u32 bic_origin_point;
+	//u32 ack_cnt;
+	//u32 cnt;
+	//u32 bic_K;
+	//u32 bic_origin_point;
 };
 
 struct loss_info {
@@ -167,31 +167,42 @@ static u32 calc_new_cwnd(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 ac
 void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked) {
 	const struct sock *sk = &(tp->inet_conn.icsk_inet.sk);
 	u16 family = sk->__sk_common.skc_family;
+	
 	if (family == AF_INET) {
 		struct cwnd_info info = {};
 		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
-		const struct bictcp *ca = inet_csk_ca(sk);
+		//const struct bictcp *ca = inet_csk_ca(sk);
 
 		info.min_rtt = tp->rtt_min.s[0].v;
 		info.smoothed_rtt = tp->srtt_us >> 3;
 		info.latest_rtt = tp->rack.rtt_us;
-		info.snd_cwnd = calc_new_cwnd(ctx, tp, w, acked);
-		if (acked <= tp->packets_out)
-			info.pkts_in_flight = tp->packets_out - acked;
-		else
-			info.pkts_in_flight = 0;
-		info.ack_cnt = ca->ack_cnt;
-		info.cnt = ca->cnt;
-		info.bic_K = ca->bic_K;
-		info.bic_origin_point = ca->bic_origin_point;
-		if (tp->snd_cwnd != info.snd_cwnd)
-			cwnd_change.perf_submit(ctx, &info, sizeof(info));
+		//if (tp->snd_cwnd < tp->snd_ssthresh){
+		//	u32 snd_cwnd = tp->snd_cwnd;
+		//	u32 snd_cwnd_clamp = tp->snd_cwnd_clamp;
+		//	u32 ssthresh = tp->snd_ssthresh;
+		//	u32 cwnd = MIN(snd_cwnd + acked, ssthresh);
+		//	info.snd_cwnd = MIN(cwnd, snd_cwnd_clamp);
+		//}
+		//else
+		//	info.snd_cwnd = calc_new_cwnd(ctx, tp, w, acked);
+		info.snd_cwnd = tp->snd_cwnd;
+
+		//if (acked <= tp->packets_out)
+		//	info.pkts_in_flight = tp->packets_out - acked;
+		//else
+		//	info.pkts_in_flight = 0;
+		info.pkts_in_flight = tp->packets_out;
+		//info.ack_cnt = ca->ack_cnt;
+		//info.cnt = ca->cnt;
+		//info.bic_K = ca->bic_K;
+		//info.bic_origin_point = ca->bic_origin_point;
+		cwnd_change.perf_submit(ctx, &info, sizeof(info));
 	}
 }
 
 // Trace CWND changes during slow start
-void trace_slow_start(struct pt_regs *ctx, struct tcp_sock *tp) {
+void trace_slow_start(struct pt_regs *ctx, struct tcp_sock *tp, u32 acked) {
 	const struct sock *sk = &(tp->inet_conn.icsk_inet.sk);
 	u16 family = sk->__sk_common.skc_family;
 	if (family == AF_INET) {
@@ -203,7 +214,7 @@ void trace_slow_start(struct pt_regs *ctx, struct tcp_sock *tp) {
 		info.min_rtt = tp->rtt_min.s[0].v;
 		info.smoothed_rtt = tp->srtt_us >> 3;
 		info.latest_rtt = tp->rack.rtt_us;
-		u32 acked = regs_return_value(ctx);
+		//u32 acked = regs_return_value(ctx);
 		if (acked <= tp->packets_out)
 			info.pkts_in_flight = tp->packets_out - acked;
 		else

@@ -12,11 +12,13 @@ from argparse import ArgumentParser
 from time import sleep
 from packetcapture import PacketCapture
 
-class Simple_p2p:
+class Droprate:
     def addCLIArguments(self, p2p_parser):
         p2p_parser.add_argument('--delay', action='store', type=str, required=True, help='One-way delay of network, specify with units.')
         p2p_parser.add_argument('--bandwidth', action='store', type=float, required=True, help='Bandwidth of the link in Mbit/s.')
         p2p_parser.add_argument('--queue', action='store', type=int, required=True, help='Queue size of the queue attached to the link. Specified in packets.')
+        p2p_parser.add_argument('--rate_to_client', action='store', type=int, required=True, help='drop rate (in percentage) in the server to client direction')
+        p2p_parser.add_argument('--rate_to_server', action='store', type=int, required=True, help='drop rate (in percentage) in the client to server direction')
 
     def run(self, sim_args, curtime, entrypoint):
         if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'CLIENT_LOGS', 'SERVER_LOGS', 'CL_COMMIT', 'SV_COMMIT']):
@@ -61,6 +63,9 @@ class Simple_p2p:
         client.cmd('./updateAndBuild.sh')
         info('*** Starting network\n')
         net.start()
+        info('***Config loss on switch links\n')
+        net.get('s1').cmd('tc qdisc change dev s1-eth1 parent 5:1 netem delay ' + sim_args.delay + ' loss ' + str(sim_args.rate_to_server) + '% limit ' + str(sim_args.queue))
+        net.get('s2').cmd('tc qdisc change dev s2-eth1 parent 5:1 netem delay ' + sim_args.delay + ' loss ' + str(sim_args.rate_to_client) + '% limit ' + str(sim_args.queue))
         capture = PacketCapture()
         if sim_args.k:
             client.cmd(entrypoint + " &")

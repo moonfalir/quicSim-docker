@@ -32,6 +32,14 @@ from droplist import Droplist
 droplist = Droplist()
 droplist.addCLIArguments(sub_parser)
 
+#Add droprate arguments
+sub_parser = subparsers.add_parser('droprate')
+sub_parser.add_argument('-k', action='store_true', help='Flag to add kernel debug volume to container')
+sys.path.append(curdir + '/droprate')
+from droprate import Droprate
+droprate = Droprate()
+droprate.addCLIArguments(sub_parser)
+
 sim_args = sim_parser.parse_args()
 
 available_scenarios = ['simple_p2p']
@@ -54,10 +62,17 @@ def run_droplist():
     curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
     droplist.run(sim_args, curtime, entrypoint)
 
+def run_droprate():
+    entrypoint = "./entrypoint_min.sh"
+    droprate = Droprate()
+    curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
+    droprate.run(sim_args, curtime, entrypoint)
+    
 switch = {
     'simple_p2p': run_simple_p2p,
     'blackhole': run_blackhole,
-    'droplist': run_droplist
+    'droplist': run_droplist,
+    'droprate': run_droprate
 }
 func = switch.get(sim_args.scenario)
 func()

@@ -13,14 +13,14 @@ import sys
 b = BPF(src_file="ebpf_probes.c")
 
 # Attach trace functions to event functions as k(ret)probes
-b.attach_kprobe(event="bictcp_state", fn_name="trace_cubictcp_state")
-b.attach_kretprobe(event="bictcp_recalc_ssthresh", fn_name="trace_recalc_ssthresh")
-b.attach_kprobe(event="bictcp_cwnd_event", fn_name="trace_cwnd_event")
-b.attach_kprobe(event="tcp_cong_avoid_ai", fn_name="trace_cong_avoid")
-b.attach_kretprobe(event="tcp_slow_start", fn_name="trace_slow_start")
-b.attach_kprobe(event="tcp_enter_loss", fn_name="trace_enter_loss")
+#b.attach_kprobe(event="bictcp_state", fn_name="trace_cubictcp_state")
+#b.attach_kretprobe(event="bictcp_recalc_ssthresh", fn_name="trace_recalc_ssthresh")
+#b.attach_kprobe(event="bictcp_cwnd_event", fn_name="trace_cwnd_event")
+b.attach_kprobe(event="tcp_reno_cong_avoid", fn_name="trace_cong_avoid")
+#b.attach_kprobe(event="tcp_slow_start", fn_name="trace_slow_start")
+#b.attach_kprobe(event="tcp_enter_loss", fn_name="trace_enter_loss")
 b.attach_kprobe(event="tcp_init_buffer_space", fn_name="trace_init_cong_control")
-b.attach_kprobe(event="tcp_rcv_established", fn_name="trace_bytes_in_flight")
+#b.attach_kprobe(event="tcp_rcv_established", fn_name="trace_bytes_in_flight")
 
 qlog = {
 	"qlog_version": "draft-01",
@@ -199,7 +199,7 @@ def print_cwnd_event(cpu, data, size):
 def print_cwnd_change(cpu, data, size):
 	event = b["cwnd_change"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr))
-	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		time = setTimeInfo(event.timestamp, True)
 		output_arr = []
 		output_arr.append("%.6f" % (abs(time) * 1000))
@@ -211,11 +211,11 @@ def print_cwnd_change(cpu, data, size):
 				"packets_in_flight": str(event.pkts_in_flight),
 				"min_rtt": "%.2f" % (event.min_rtt / 1000),
 				"smoothed_rtt": "%.2f" % (event.smoothed_rtt / 1000),
-				"latest_rtt": "%.2f" % (event.latest_rtt / 1000),
-				"ca_ack_count": str(event.ack_cnt),
-				"cwnd_inc_after_acks": str(event.cnt),
-				"time_to_origin": str(event.bic_K),
-				"origin_point": str(event.bic_origin_point)
+				"latest_rtt": "%.2f" % (event.latest_rtt / 1000)
+				#"ca_ack_count": str(event.ack_cnt),
+				#"cwnd_inc_after_acks": str(event.cnt),
+				#"time_to_origin": str(event.bic_K),
+				#"origin_point": str(event.bic_origin_point)
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
@@ -272,7 +272,7 @@ def print_loss_event(cpu, data, size):
 def print_init_cong_control(cpu, data, size):
 	event = b["init_event"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr))
-	if sender.__contains__("10.0.0.252") or sender.__contains__("193.167.0.100"):
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		time = setTimeInfo(event.timestamp, True)
 		output_arr = []
 		output_arr.append("%.6f" % (abs(time) * 1000))
@@ -340,25 +340,19 @@ def print_bytes_in_flight(cpu, data, size):
 print("Tracing tcp events ... Hit Ctrl-C to end")
 
 # Bind print functions to ebpf tables 
-b["ca_state"].open_perf_buffer(print_ca_state)
-b["ssthresh_event"].open_perf_buffer(print_ssthresh_event)
-b["cwnd_event"].open_perf_buffer(print_cwnd_event)
+#b["ca_state"].open_perf_buffer(print_ca_state)
+#b["ssthresh_event"].open_perf_buffer(print_ssthresh_event)
+#b["cwnd_event"].open_perf_buffer(print_cwnd_event)
 b["cwnd_change"].open_perf_buffer(print_cwnd_change)
-b["loss_event"].open_perf_buffer(print_loss_event)
+#b["loss_event"].open_perf_buffer(print_loss_event)
 b["init_event"].open_perf_buffer(print_init_cong_control)
-b["fc_event"].open_perf_buffer(print_bytes_in_flight)
+#b["fc_event"].open_perf_buffer(print_bytes_in_flight)
 
-#timeout of 30 seconds
-timeout = ti.time() + 30*1
 if len(sys.argv) == 2:
 	outputfile = sys.argv[1]
 else:
 	outputfile = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
 while 1:
-	if ti.time() > timeout:
-		with open('/logs/' + outputfile + '.qlog', 'w') as f:
-			f.write(json.dumps(qlog))
-		exit()
 	try:
 		b.perf_buffer_poll()
 	except KeyboardInterrupt:

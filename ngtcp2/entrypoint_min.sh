@@ -5,8 +5,10 @@
 # - SERVER_PARAMS contains user-supplied command line parameters
 # - CLIENT_PARAMS contains user-supplied command line parameters
 
-if [ "$ROLE" == "client" ]; then 
+if [ "$ROLE" == "client" ]; then
+    git rev-parse HEAD > /logs/cl_commit.txt
     ./examples/client $CLIENT_PARAMS
 elif [ "$ROLE" == "server" ]; then
+    git rev-parse HEAD > /logs/sv_commit.txt
     ./examples/server $SERVER_PARAMS
 fi

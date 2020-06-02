@@ -5,4 +5,6 @@ SERVER="ngtcp2" \
 SERVER_PARAMS="--qlog-dir=/logs -q 10.0.0.251 4433 server.key server.crt" \
 SCENARIO="simple_p2p --delay=15ms --bandwidth=5 --queue=25" \
 LOGDIR="$PWD" \
+CL_COMMIT="" \
+SV_COMMIT="" \
 docker-compose -f ../containernet/docker-compose.yml up

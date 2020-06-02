@@ -1,4 +1,7 @@
 #!/usr/bin/python
+from sys import path
+path.append('..')
+
 from mininet.net import Containernet
 from mininet.node import Controller
 from mininet.cli import CLI
@@ -7,6 +10,7 @@ from mininet.log import info, setLogLevel
 from os import environ
 from argparse import ArgumentParser, ArgumentTypeError
 from time import sleep
+from packetcapture import PacketCapture
 
 class Blackhole:
     def check_positive(self, value):
@@ -52,14 +56,17 @@ class Blackhole:
         client.cmd('wait ' + pid)
 
     def run(self, sim_args, curtime, entrypoint):
-        if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'LOGDIR']):
+        if any(v not in environ for v in ['CLIENT', 'CLIENT_PARAMS', 'SERVER', 'SERVER', 'CLIENT_LOGS', 'SERVER_LOGS', 'CL_COMMIT', 'SV_COMMIT']):
             # TODO show help
             exit(1)
         client_image = environ['CLIENT']
         client_params = environ['CLIENT_PARAMS']
         server_image = environ['SERVER']
         server_params = environ['SERVER_PARAMS']
-        logdir = environ['LOGDIR']
+        cl_logdir = environ['CLIENT_LOGS']
+        sv_logdir = environ['SERVER_LOGS']
+        clcommit = environ['CL_COMMIT']
+        svcommit = environ['SV_COMMIT']
 
         setLogLevel('info')
 
@@ -67,19 +74,17 @@ class Blackhole:
         info('*** Adding controller\n')
         net.addController('c0')
         info('*** Adding docker containers\n')
-        client_vs = [logdir + '/logs/client:/logs']
+        server_vs = [sv_logdir + ':/logs']
         if sim_args.k:
-            client_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
-            server_params = curtime
-            client_params = curtime
+            server_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
         server = net.addDocker('server', ip='10.0.0.251',
-                               environment={"ROLE": "server", "SERVER_PARAMS": server_params},
+                               environment={"ROLE": "server", "SERVER_PARAMS": server_params, "COMMIT": svcommit},
                                dimage=server_image + ":latest",
-                               volumes=[logdir + '/logs/server:/logs'])
+                               volumes=server_vs)
         client = net.addDocker('client', ip='10.0.0.252',
-                               environment={"ROLE": "client", "CLIENT_PARAMS": client_params},
+                               environment={"ROLE": "client", "CLIENT_PARAMS": client_params, "COMMIT": clcommit},
                                dimage=client_image + ":latest", 
-                               volumes=client_vs)
+                               volumes=[cl_logdir + ':/logs'])
 
         info('*** Adding switches\n')
         s1 = net.addSwitch('s1')
@@ -88,13 +93,25 @@ class Blackhole:
         net.addLink(s1, s2, cls=TCLink, delay=sim_args.delay, bw=sim_args.bandwidth, max_queue_size=sim_args.queue)
         net.addLink(s1, client)
         net.addLink(s2, server)
+        info('\n*** Updating and building client/server\n')
+        server.cmd('./updateAndBuild.sh')
+        client.cmd('./updateAndBuild.sh')
         info('*** Starting network\n')
         net.start()
-        server.cmd(entrypoint + " &")
+        capture = PacketCapture()
+        if sim_args.k:
+            client.cmd(entrypoint + " &")
+        else:
+            server.cmd(entrypoint + " &" )
+        capture.startCapture()
         info('\n' + entrypoint + '\n')
-        self.startTest(client, net, entrypoint, sim_args)
+        if sim_args.k:
+            self.startTest(server, net, entrypoint, sim_args)
+        else:
+            self.startTest(client, net, entrypoint, sim_args)
         # Wait some time to allow server finish writing to log file
         info('Test finished, waiting for server to receive all packets\n')
         sleep(3)
+        capture.stopCapture()
         info('*** Stopping network\n')
         net.stop()
