@@ -20,11 +20,11 @@ RUN mkdir wiresharksrc && mkdir wiresharkbld
 
 WORKDIR /wiresharksrc
 
-RUN wget https://www.wireshark.org/download/automated/src/wireshark-3.3.0rc0-1299-g3605bdc32325.tar.xz &&  tar -xvf wireshark-3.3.0rc0-1299-g3605bdc32325.tar.xz
+RUN wget https://www.wireshark.org/download/automated/src/wireshark-3.3.0rc0-1315-ge0eefe186af4.tar.xz &&  tar -xvf wireshark-3.3.0rc0-1315-ge0eefe186af4.tar.xz
 
 WORKDIR /wiresharkbld
 
-RUN cmake -DBUILD_wireshark=OFF -DENABLE_CAP=OFF -DENABLE_ZLIB=OFF /wiresharksrc/wireshark-3.3.0rc0-1299-g3605bdc32325
+RUN cmake -DBUILD_wireshark=OFF -DENABLE_CAP=OFF -DENABLE_ZLIB=OFF /wiresharksrc/wireshark-3.3.0rc0-1315-ge0eefe186af4
 
 RUN make
 
