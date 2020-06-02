@@ -72,7 +72,7 @@ def main():
     # run server threads
     threads = []
     for i in range(len(servers)):
-        x = threading.Thread(target=serverThread, args=(i, servers[i],splittestcases[i], "test", "test2"))
+        x = threading.Thread(target=serverThread, args=(i, servers[i],splittestcases[i], qtest_args.usr, qtest_args.pwd))
         threads.append(x)
         x.start()
 
