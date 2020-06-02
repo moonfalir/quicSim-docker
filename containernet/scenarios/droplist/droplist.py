@@ -45,9 +45,11 @@ class Droplist:
         if sim_args.drops_to_server != None:
             poxCommand += ' --droplist_client=' + sim_args.drops_to_server
         
+        # add custom controller to drop list of packets
         net.addController('c0', poxArgs = poxCommand)
         info('*** Adding docker containers\n')
         server_vs = [sv_logdir + ':/logs']
+        # add kernel debug volume to allow eBPF code to run
         if sim_args.k:
             server_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
         server = net.addDocker('server', ip='10.0.0.251',

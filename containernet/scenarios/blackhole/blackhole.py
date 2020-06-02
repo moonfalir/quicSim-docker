@@ -38,6 +38,7 @@ class Blackhole:
             info('Starting blackhole, traffic will be blocked\n')
             if (sim_args.direction == 'both' or sim_args.direction == 'toclient'):
                 info('toclient off\n')
+                # use tc to introduce 100% packet loss
                 net.get('s2').cmd('tc qdisc change dev s2-eth1 parent 5:1 netem delay ' + sim_args.delay + ' loss 100% limit ' + str(sim_args.queue))
             if (sim_args.direction == 'both' or sim_args.direction == 'toserver'):
                 info('toserver off\n')
@@ -47,6 +48,7 @@ class Blackhole:
             info('Stopping blackhole, traffic will be transmitted\n')
             if (sim_args.direction == 'both' or sim_args.direction == 'toclient'):
                 info('toclient on\n')
+                # use tc to remove 100% packet loss
                 net.get('s2').cmd('tc qdisc change dev s2-eth1 parent 5:1 netem delay ' + sim_args.delay + ' limit ' + str(sim_args.queue))
             if (sim_args.direction == 'both' or sim_args.direction == 'toserver'):
                 info('toserver on\n')
@@ -75,6 +77,7 @@ class Blackhole:
         net.addController('c0')
         info('*** Adding docker containers\n')
         server_vs = [sv_logdir + ':/logs']
+        # add kernel debug volume to allow eBPF code to run
         if sim_args.k:
             server_vs.append( '/sys/kernel/debug:/sys/kernel/debug:ro')
         server = net.addDocker('server', ip='10.0.0.251',

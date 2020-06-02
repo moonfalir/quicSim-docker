@@ -1,5 +1,11 @@
 FROM quic-network-simulator-endpoint:latest
 
+#Add debian linux headers
+RUN apt-get update && apt-get install -y gnupg
+
+RUN echo deb http://deb.debian.org/debian buster-backports main contrib non-free | tee /etc/apt/sources.list.d/buster-backports.list && \
+ apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 04EE7237B7D453EC && apt-get update
+
 RUN apt-get update && apt-get install -y \
  git \
  python-dev \
@@ -30,8 +36,6 @@ WORKDIR /bcc/build
 RUN cmake .. -DCMAKE_INSTALL_PREFIX=/usr && make && make install
 
 COPY bccscripts /bccscripts
-
-COPY simple_socket /simple_socket
 
 COPY tcp_server.py captureAndServe.py ./
 

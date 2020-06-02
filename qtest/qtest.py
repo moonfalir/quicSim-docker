@@ -24,30 +24,16 @@ class QTest:
         else:
             servers = self._implementations['tcp_servers']
             clients = self._implementations['tcp_clients']
+
         clientname = clients[clientid]['name']
         servername = servers[serverid]['name']
-        if not os.path.isdir(rootlogdir + servername):
-            os.makedirs(rootlogdir + servername)
-            os.makedirs(rootoutputdir + servername)
-        testlogdir = rootlogdir + servername# + "/" + clientname
-        testoutputdir = rootoutputdir + servername# + "/" + clientname
-#
-        #if not os.path.isdir(testlogdir):
-        #    os.makedirs(testlogdir)
-        #    os.makedirs(testoutputdir)
-
-        testlogdir += "/" + scenario['name'] 
-        testoutputdir += "/" + scenario['name']    
+        
+        testlogdir = rootlogdir + servername + "/" + scenario['name'] + "/run" + str(run + 1)
+        testoutputdir = rootoutputdir + servername + "/" + scenario['name'] + "/run" + str(run + 1)
 
         if not os.path.isdir(testlogdir):
             os.makedirs(testlogdir)
             os.makedirs(testoutputdir)  
-
-        testlogdir += "/run" + str(run + 1)
-        testoutputdir += "/run" + str(run + 1)    
-
-        os.makedirs(testlogdir)
-        os.makedirs(testoutputdir)  
 
         bytesreq = scenario["bytesreq"]
         logging.debug("Request: %s bytes", bytesreq)
@@ -89,6 +75,7 @@ class QTest:
         svpars = svpars.replace("$CURTIME" , curtime)
         filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
         filemngr.pcaptojson(testlogdir, "QNS", met_calc, isquic, run)
+
         scenario_min = scenario["min"]
         if not isquic:
             scenario_min += " -k"
@@ -153,3 +140,163 @@ class QTest:
                         self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, met_calc, False, run)
 
         met_calc.saveMetrics(rootlogdir)
+
+
+class QTestDist:
+    _implementations = []
+    _runs = 1
+    def __init__(self, implementations: list, runs: int):
+        self._implementations = implementations
+        self._runs = runs
+
+    def getTestCaseInfo(self, serverid: int, clientid: int, rootlogdir: str, rootoutputdir: str, curtime: str, scenario: dict, isquic: bool, run: int, testlist: list):
+        if isquic:
+            servers = self._implementations['quic_servers']
+            clients = self._implementations['quic_clients']
+        else:
+            servers = self._implementations['tcp_servers']
+            clients = self._implementations['tcp_clients']
+
+        clientname = clients[clientid]['name']
+        servername = servers[serverid]['name']
+    
+        testlogdir = rootlogdir + servername + "/" + scenario['name'] + "/run" + str(run + 1)
+        testoutputdir = rootoutputdir + servername + "/" + scenario['name'] + "/run" + str(run + 1)   
+
+        bytesreq = scenario["bytesreq"]
+        logging.debug("Request: %s bytes", bytesreq)
+        tcpqns_config = ""
+        if not isquic:
+            tcpqns_config = "-f ../quic-network-simulator/docker-compose.tcp.yml "
+        
+        testcase = {
+            "testlogdir": testlogdir,
+            "testoutputdir": testoutputdir,
+            "curtime": curtime,
+            "bytesreq": bytesreq,
+            "tcp_config": tcpqns_config,
+            "sim": "qns",
+            "scenario": scenario["qns"],
+            "client": clientname,
+            "server": servername,
+            "run": run,
+            "client_params": clients[clientid]['clpars_qns'],
+            "server_params": servers[serverid]['svpars_qns'],
+            "cl_commit": clients[clientid]['clcommit'],
+            "sv_commit": servers[serverid]['svcommit']
+        }
+        testlist.append(testcase)
+
+        scenario_min = scenario["min"]
+        tcp_config = ""
+        if not isquic:
+            scenario_min += " -k"
+            tcp_config = "tcpmin"
+
+        testcase = {
+            "testlogdir": testlogdir,
+            "testoutputdir": testoutputdir,
+            "curtime": curtime,
+            "bytesreq": bytesreq,
+            "tcp_config": tcp_config,
+            "sim": "min",
+            "scenario": scenario_min,
+            "client": clientname,
+            "server": servername,
+            "run": run,
+            "client_params": clients[clientid]['clpars_min'],
+            "server_params": servers[serverid]['svpars_min'],
+            "cl_commit": clients[clientid]['clcommit'],
+            "sv_commit": servers[serverid]['svcommit']
+        }
+        testlist.append(testcase)
+        
+        return testlist
+
+    def predetermineTestCases(self):
+        curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
+        rootlogdir = os.path.dirname(os.path.abspath(__file__)) + "/logs/" + curtime
+        rootoutputdir = os.path.dirname(os.path.abspath(__file__)) + "/outputs/" + curtime
+        
+        rootlogdir += "/"
+        rootoutputdir += "/"
+
+        testcases = []
+
+        for serverid, server in enumerate(self._implementations['quic_servers']):
+            for clientid, client in enumerate(self._implementations['quic_clients']):
+                for scenario in SCENARIOS:
+                    for run in range(0, self._runs):
+                        testcases = self.getTestCaseInfo(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, True, run, testcases)
+
+        for serverid, server in enumerate(self._implementations['tcp_servers']):
+            for clientid, client in enumerate(self._implementations['tcp_clients']):
+                for scenario in SCENARIOS:
+                    for run in range(0, self._runs):
+                        testcases = self.getTestCaseInfo(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, False, run, testcases)
+
+        return testcases
+    
+    def runDistTestCase(self, testcase, met_calc):
+        #create logdir
+        if not os.path.isdir(testcase["testlogdir"]):
+            os.makedirs(testcase["testlogdir"])
+            os.makedirs(testcase["testoutputdir"])
+        bytesreq = testcase["bytesreq"]
+        isquic = testcase["tcp_config"] == ""
+        cmd = (
+            "CURTIME=" + testcase["curtime"] + " "
+            "SERVER_LOGS=" + testcase["testlogdir"] + " "
+            "CLIENT_LOGS=" + testcase["testlogdir"] + " "
+            "SCENARIO=\"" + testcase["scenario"] + "\" "
+            "CLIENT=" + testcase["client"] + " "
+            "SERVER=" + testcase["server"] + " "
+            "BYTESREQ=" + bytesreq + " "
+            "CLIENT_PARAMS=\"" + testcase["client_params"] + "\" "
+            "SERVER_PARAMS=\"" + testcase["server_params"] + "\" "
+            "CL_COMMIT=\"" + testcase['cl_commit'] + "\" "
+            "SV_COMMIT=\"" + testcase['sv_commit'] + "\" "
+        )
+        if testcase["sim"] == "qns":
+            o_file = "/qns.out"
+            cmd = cmd + "docker-compose -f ../quic-network-simulator/docker-compose.yml " + testcase["tcp_config"] + "up --abort-on-container-exit"
+        else:
+            o_file = "/min.out"
+            cmd = cmd + "docker-compose -f ../containernet/docker-compose.yml up --abort-on-container-exit"
+        print("Server: " + testcase["server"] + ". Client: " + testcase["client"] + ". Test case: " + testcase["scenario"] + ". Simulation: " + testcase["sim"])
+        try:
+            r = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
+            output = r.stdout
+        except subprocess.TimeoutExpired as ex:
+            output = ex.stdout
+            expired = True
+
+
+        with open(testcase["testoutputdir"] + o_file, "w+") as outputfile:
+            outputfile.write(output.decode('utf-8'))
+
+        filemngr = FileManager()
+        
+        clpars = testcase["client_params"]
+        clpars = clpars.replace("$CURTIME" , testcase["curtime"])
+        clpars = clpars.replace("$BYTESREQ", bytesreq)
+        svpars = testcase["server_params"]
+        svpars = svpars.replace("$CURTIME" , testcase["curtime"])
+        filemngr.addTestInfo(testcase["testlogdir"], testcase["scenario"], clpars, svpars, testcase["client"], testcase["client"], testcase["sim"])
+        filemngr.pcaptojson(testcase["testlogdir"], testcase["sim"], met_calc, isquic, testcase["run"])
+
+    def runDistributed(self, id):
+        testcasesfile = open(os.path.dirname(os.path.abspath(__file__)) + "/test.json", "r")
+        testcases = json.load(testcasesfile)
+        met_calc = MetricCalculator()
+
+        for testcase in testcases:
+           self.runDistTestCase(testcase, met_calc)
+        
+        metrics = met_calc.getMetrics()
+        split_dir = testcases[0]["testlogdir"].split("/")
+        split_dir = split_dir[0:len(split_dir) - 3]
+        outputdir = "/".join(split_dir)
+        
+        with open(outputdir + "/metrics" + str(id) + ".json", mode='w') as metrics_file:
+            json.dump(metrics, metrics_file)
