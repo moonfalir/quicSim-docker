@@ -11,6 +11,7 @@ from argparse import ArgumentParser
 
 
 servers = [
+    '172.19.13.222',
     '172.19.13.223',
     '172.19.13.224',
     '172.19.13.225',
