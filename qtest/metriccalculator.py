@@ -37,7 +37,8 @@ class MetricCalculator():
             run_avgs["avg_cwnd"] /= totals["cwnd_amount"]
         except ZeroDivisionError as z:
             print()
-        if run == 0:
+        id = next((index for (index, d) in enumerate(self._metricsperfile) if d["name"] == name and d["sim"] == sim), None)
+        if id == None:
             self._metricsperfile.append({
                 "name": name,
                 "sim": sim,
@@ -48,9 +49,7 @@ class MetricCalculator():
                 "runs": []
             })
             id = len(self._metricsperfile) - 1
-        else:
-            id = next((index for (index, d) in enumerate(self._metricsperfile) if d["name"] == name and d["sim"] == sim), None)
-            self._metricsperfile[id]["runs"].append(run_avgs)
+        self._metricsperfile[id]["runs"].append(run_avgs)
 
     def getAvgCWND(self, file: str, run_avgs: dict, totals: dict):
         data = ""
