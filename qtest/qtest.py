@@ -215,8 +215,8 @@ class QTestDist:
 
     def predetermineTestCases(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
-        rootlogdir = os.path.dirname(os.path.abspath(__file__)) + "/logs/" + curtime
-        rootoutputdir = os.path.dirname(os.path.abspath(__file__)) + "/outputs/" + curtime
+        rootlogdir = "/home/jreynders/quicSim-docker/qtest/logs/" + curtime
+        rootoutputdir = "/home/jreynders/quicSim-docker/qtest/outputs/" + curtime
         
         rootlogdir += "/"
         rootoutputdir += "/"
@@ -235,7 +235,7 @@ class QTestDist:
                     for run in range(0, self._runs):
                         testcases = self.getTestCaseInfo(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, False, run, testcases)
 
-        return testcases
+        return testcases, curtime
     
     def runDistTestCase(self, testcase, met_calc):
         #create logdir

@@ -55,10 +55,12 @@ def main():
 
     # gather all info for each test run
     implementations = copy.deepcopy(IMPLEMENTATIONS)
-    testcases = QTestDist(
+    testcases, time = QTestDist(
         implementations=implementations,
         runs=qtest_args.runs
     ).predetermineTestCases()
+
+    print(time)
 
     # split info up in equal sizes for each server
     testsperserver = math.floor(len(testcases) / len(servers))
