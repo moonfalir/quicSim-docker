@@ -50,7 +50,7 @@ class MetricCalculator():
             id = len(self._metricsperfile) - 1
         else:
             id = next((index for (index, d) in enumerate(self._metricsperfile) if d["name"] == name and d["sim"] == sim), None)
-        self._metricsperfile[id]["runs"].append(run_avgs)
+            self._metricsperfile[id]["runs"].append(run_avgs)
 
     def getAvgCWND(self, file: str, run_avgs: dict, totals: dict):
         data = ""

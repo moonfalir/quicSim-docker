@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 # install docker-compose
 # install paramiko (via pip3) as sudo
 # install docker (via pip3) as sudo
+# install numpy (via pip3) as sudo
 
 
 servers = [
