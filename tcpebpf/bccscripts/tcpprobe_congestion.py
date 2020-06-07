@@ -76,15 +76,17 @@ def setTimeInfo(timestamp):
 	time = reference_time - (start_time + (ctypes.c_float(timestamp).value / 1000000000))
 	return time
 
+prev_met_upd_t = 0
 # Log new CWND values
 def print_cwnd_change(cpu, data, size):
 	event = b["cwnd_change"].event(data)
 	# get sender's IP
 	sender = inet_ntop(AF_INET, pack('I', event.saddr))
 	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
-		time = setTimeInfo(event.timestamp)
+		global prev_met_upd_t
 		output_arr = []
-		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("%.6f" % (abs(prev_met_upd_t) * 1000))
+		prev_met_upd_t = setTimeInfo(event.timestamp)
 		output_arr.append("recovery")
 		output_arr.append("metrics_updated")
 		output_arr.append(
@@ -93,7 +95,8 @@ def print_cwnd_change(cpu, data, size):
 				"packets_in_flight": str(event.pkts_in_flight),
 				"min_rtt": "%.2f" % (event.min_rtt / 1000),
 				"smoothed_rtt": "%.2f" % (event.smoothed_rtt / 1000),
-				"latest_rtt": "%.2f" % (event.latest_rtt / 1000)
+				"latest_rtt": "%.2f" % (event.latest_rtt / 1000),
+				"rtt_variance": "%.2f" % (event.rttvar_us / 1000)
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)

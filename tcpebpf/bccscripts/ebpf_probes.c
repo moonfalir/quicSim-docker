@@ -40,6 +40,7 @@ struct cwnd_info {
 	u32 min_rtt;
 	u32 smoothed_rtt;
 	u32 latest_rtt;
+	u32 rttvar_us;
 };
 
 struct init_info {
@@ -80,6 +81,7 @@ void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked
 		info.min_rtt = tp->rtt_min.s[0].v;
 		info.smoothed_rtt = tp->srtt_us >> 3;
 		info.latest_rtt = tp->rack.rtt_us;
+		info.rttvar_us = tp->rttvar_us;
 		info.snd_cwnd = tp->snd_cwnd;
 		info.pkts_in_flight = tp->packets_out;
 		
@@ -100,6 +102,7 @@ void trace_slow_start(struct pt_regs *ctx, struct tcp_sock *tp, u32 acked) {
 		info.min_rtt = tp->rtt_min.s[0].v;
 		info.smoothed_rtt = tp->srtt_us >> 3;
 		info.latest_rtt = tp->rack.rtt_us;
+		info.rttvar_us = tp->rttvar_us;
 		
 		if (acked <= tp->packets_out)
 			info.pkts_in_flight = tp->packets_out - acked;
