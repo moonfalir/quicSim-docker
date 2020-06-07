@@ -16,6 +16,8 @@ b = BPF(src_file="ebpf_probes.c")
 b.attach_kprobe(event="tcp_reno_cong_avoid", fn_name="trace_cong_avoid")
 b.attach_kprobe(event="tcp_slow_start", fn_name="trace_slow_start")
 b.attach_kprobe(event="tcp_init_buffer_space", fn_name="trace_init_cong_control")
+b.attach_kprobe(event="tcp_mark_skb_lost", fn_name="trace_mark_lost")
+b.attach_kprobe(event="tcp_write_timer_handler", fn_name="trace_timeout_trigger")
 
 qlog = {
 	"qlog_version": "draft-01",
@@ -119,12 +121,39 @@ def print_init_cong_control(cpu, data, size):
 		)
 		qlog["traces"][0]["events"].append(output_arr)
 
+def print_mark_lost(cpu, data, size):
+	event = b["mark_lost"].event(data)
+	sender = inet_ntop(AF_INET, pack('I', event.saddr))
+	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
+		time = setTimeInfo(event.timestamp)
+		output_arr = []
+		output_arr.append("%.6f" % (abs(time) * 1000))
+		output_arr.append("recovery")
+		output_arr.append("packet_lost")
+
+		trigger = ""
+		if event.loss_trigger == 1:
+			trigger = "time_threshold"
+		elif event.loss_trigger == 2:
+			trigger = "pto_expired"
+		elif event.loss_trigger == 3:
+			trigger = "retrans_timer"
+		output_arr.append(
+			{
+				"packet_number": str(event.seq),
+				"trigger": trigger,
+			}
+		)
+		if trigger != "":
+			print(output_arr)
+			qlog["traces"][0]["events"].append(output_arr)
 
 print("Tracing tcp events ... Hit Ctrl-C to end")
 
 # Bind print functions to ebpf tables 
 b["cwnd_change"].open_perf_buffer(print_cwnd_change)
 b["init_event"].open_perf_buffer(print_init_cong_control)
+b["mark_lost"].open_perf_buffer(print_mark_lost)
 
 if len(sys.argv) == 2:
 	outputfile = sys.argv[1]

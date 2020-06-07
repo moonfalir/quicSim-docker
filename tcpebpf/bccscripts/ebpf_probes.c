@@ -1,10 +1,14 @@
 #define KBUILD_MODNAME "tcpcctrace"
 #include <uapi/linux/ptrace.h>
+#include <uapi/linux/tcp.h>
 #include <net/sock.h>
 #include <bcc/proto.h>
 #include <net/tcp.h>
+#include <linux/kernel.h>
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
+
+//__u32   be32_to_cpu(const __be32);
 
 /* BIC TCP Parameters */
 struct bictcp {
@@ -50,10 +54,18 @@ struct init_info {
 	u32 icsk_rto;
 };
 
+struct pkt_lost {
+	u32 saddr;
+    u64 timestamp;
+	int loss_trigger;
+	u32 seq;
+};
+
 
 // eBPF tables to output data
 BPF_PERF_OUTPUT(cwnd_change);
 BPF_PERF_OUTPUT(init_event);
+BPF_PERF_OUTPUT(mark_lost);
 
 // Trace CWND changes during congestion avoidance
 void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked) {
@@ -119,5 +131,54 @@ void trace_init_cong_control(struct pt_regs *ctx, struct sock *sk) {
 		
 
 		init_event.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+static struct tcphdr *skb_to_tcphdr(const struct sk_buff *skb)
+{
+    // unstable API. verify logic in tcp_hdr() -> skb_transport_header().
+    return (struct tcphdr *)(skb->head + skb->transport_header);
+}
+
+// Trace packets marked as lost
+void trace_mark_lost(struct pt_regs *ctx, struct sock *sk, struct sk_buff *skb){
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct pkt_lost info = {};
+		info.timestamp = bpf_ktime_get_ns();
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+
+		struct tcphdr *tcp = skb_to_tcphdr(skb);
+		info.loss_trigger = 1;
+		info.seq = tcp->seq;
+		info.seq = be32_to_cpu(info.seq);
+
+		mark_lost.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+void trace_timeout_trigger(struct pt_regs *ctx, struct sock *sk) {
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct pkt_lost info = {};
+		info.timestamp = bpf_ktime_get_ns();
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+
+		const struct inet_connection_sock *icsk = inet_csk(sk);
+		int event = icsk->icsk_pending;
+		switch (event) {
+		case ICSK_TIME_LOSS_PROBE:
+			info.loss_trigger = 2;
+			break;
+		case ICSK_TIME_RETRANS:
+			info.loss_trigger = 3;
+			break;
+		default:
+			info.loss_trigger = 0;
+		}
+		info.seq = -1;
+
+		if (info.loss_trigger > 0)
+			mark_lost.perf_submit(ctx, &info, sizeof(info));
 	}
 }
