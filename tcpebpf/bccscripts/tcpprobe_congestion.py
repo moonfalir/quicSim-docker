@@ -14,7 +14,7 @@ b = BPF(src_file="ebpf_probes.c")
 
 # Attach trace functions to event functions as k(ret)probes
 b.attach_kprobe(event="tcp_reno_cong_avoid", fn_name="trace_cong_avoid")
-b.attach_kprobe(event="tcp_slow_start", fn_name="trace_slow_start")
+#b.attach_kprobe(event="tcp_slow_start", fn_name="trace_slow_start")
 b.attach_kprobe(event="tcp_init_buffer_space", fn_name="trace_init_cong_control")
 b.attach_kprobe(event="tcp_mark_skb_lost", fn_name="trace_mark_lost")
 b.attach_kprobe(event="tcp_write_timer_handler", fn_name="trace_timeout_trigger")
@@ -148,7 +148,6 @@ def print_mark_lost(cpu, data, size):
 			}
 		)
 		if trigger != "":
-			print(output_arr)
 			qlog["traces"][0]["events"].append(output_arr)
 
 print("Tracing tcp events ... Hit Ctrl-C to end")

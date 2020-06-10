@@ -12,9 +12,9 @@ IMPLEMENTATIONS = {
         {
             "name": "quant",
             "clpars_qns": "-i eth0 -e 0xff000018 -q /logs/clientquant_$CURTIME.qlog http://193.167.100.100:4433/$BYTESREQ",
-            "svpars_qns": "-t 1 -p 4433 -i eth0 -q /logs/serverquant_$CURTIME.qlog",
+            "svpars_qns": "-t 1 -p 4433 -i eth0 -q /logs",
             "clpars_min": "-i eth1 -e 0xff000018 -q /logs/clientmnquant_$CURTIME.qlog http://10.0.0.251:4433/$BYTESREQ",
-            "svpars_min": "-t 1 -p 4433 -i eth1 -q /logs/servermnquant_$CURTIME.qlog",
+            "svpars_min": "-t 1 -p 4433 -i eth1 -q /logs",
             "clcommit": "",
             "svcommit": ""
         }
@@ -22,8 +22,8 @@ IMPLEMENTATIONS = {
     "quic_clients": [
         {
             "name": "aioquic",
-            "clpars_qns": "--ca-certs tests/pycacert.pem --insecure -q /logs/clientaioquic_$CURTIME.qlog -l /logs/ssl-key.log --legacy-http https://193.167.100.100:4433/$BYTESREQ",
-            "clpars_min": "--ca-certs tests/pycacert.pem --insecure -q /logs/clientaioquic_$CURTIME.qlog -l /logs/ssl-key.log --legacy-http https://10.0.0.251:4433/$BYTESREQ",
+            "clpars_qns": "--ca-certs tests/pycacert.pem --insecure -q /logs -l /logs/ssl-key.log --legacy-http https://193.167.100.100:4433/$BYTESREQ",
+            "clpars_min": "--ca-certs tests/pycacert.pem --insecure -q /logs -l /logs/ssl-key.log --legacy-http https://10.0.0.251:4433/$BYTESREQ",
             "clcommit": ""
         }
     ],

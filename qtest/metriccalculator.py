@@ -2,7 +2,6 @@ import os, json
 
 class MetricCalculator():
     _metricsperfile = []
-    _json_columns = ['name', 'sim', 'mdn_goodput', 'mdn_throughput', 'mdn_rtt', 'mdn_cwnd']
     
     def calculateMetrics(self, logdir: str, tcpdumpfiles: list, qlogfile: str, istcpdump: bool, isquic: bool, sim: str, run: int):
         split_dir = logdir.split("/")
@@ -19,13 +18,14 @@ class MetricCalculator():
             "avg_goodput": 0.0,
             "avg_throughput": 0.0,
             "avg_rtt": 0.0,
-            "avg_cwnd": 0.0
+            "avg_cwnd": 0.0,
+            "loss_triggers": {}
         }
         for file in tcpdumpfiles:
             serverside = "server" in file
             totals, run_avgs = self.getTcpDumpMetrics(file, isquic, serverside, run_avgs, totals)
         if qlogfile != "":
-            run_avgs = self.getAvgCWND(qlogfile, run_avgs, totals)
+            run_avgs = self.getQlogMetrics(qlogfile, run_avgs, totals)
 
         # calculate averages
         try:
@@ -51,7 +51,7 @@ class MetricCalculator():
             id = len(self._metricsperfile) - 1
         self._metricsperfile[id]["runs"].append(run_avgs)
 
-    def getAvgCWND(self, file: str, run_avgs: dict, totals: dict):
+    def getQlogMetrics(self, file: str, run_avgs: dict, totals: dict):
         data = ""
         with open(file, "r") as qlog_file:
             data = qlog_file.read()
@@ -66,19 +66,27 @@ class MetricCalculator():
             event_type_id = event_fields.index("event")
         data_id = event_fields.index("data")
 
-        prev_cwnd = -1.0
         # loop through events to find CWND values
         for event in events:
             if event[event_type_id] == "metrics_updated" and "cwnd" in event[data_id]:
-                cur_cwnd = float(event[data_id]["cwnd"])
-                if cur_cwnd != prev_cwnd:
-                    run_avgs["avg_cwnd"] += cur_cwnd
-                    totals["cwnd_amount"] += 1
-                    prev_cwnd = cur_cwnd
+                self.getAvgCWND(run_avgs, totals, event[data_id])
+            elif event[event_type_id] == "packet_lost":
+                self.getLossTriggers(run_avgs, event[data_id])
 
         return run_avgs
-    
 
+    def getLossTriggers(self, run_avgs: dict, event_data: dict):
+        trigger = event_data["trigger"]
+        if trigger in run_avgs["loss_triggers"].keys():
+            run_avgs["loss_triggers"][trigger] += 1
+        else:
+            run_avgs["loss_triggers"][trigger] = 1
+
+    def getAvgCWND(self, run_avgs: dict, totals: dict, event_data: dict):
+        cur_cwnd = float(event_data["cwnd"])
+        run_avgs["avg_cwnd"] += cur_cwnd
+        totals["cwnd_amount"] += 1
+        prev_cwnd = cur_cwnd
 
     def getTcpDumpMetrics(self, file: str, isquic: bool, serverside: bool, run_avgs: dict, totals: dict):
         data = ""
@@ -394,7 +402,7 @@ class MetricCalculator():
             self._metricsperfile[id]["mdn_rtt"] = medians["mdn_rtt"]
             self._metricsperfile[id]["mdn_cwnd"] = medians["mdn_cwnd"]
         with open(outputdir + "/metrics.json", mode='w') as metrics_file:
-            json.dump(self._metricsperfile, metrics_file)
+            json.dump(self._metricsperfile, metrics_file, indent=4)
     
     def getMetrics(self):
         return self._metricsperfile

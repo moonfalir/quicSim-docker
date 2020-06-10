@@ -65,7 +65,7 @@ def groupMetrics(logdir: str):
         metrics[id]["mdn_rtt"] = medians["mdn_rtt"]
         metrics[id]["mdn_cwnd"] = medians["mdn_cwnd"]
     with open(logdir + "/metrics.json", mode='w') as metrics_file:
-        json.dump(metrics, metrics_file)
+        json.dump(metrics, metrics_file, indent=4)
 
 def getMetricFiles(logdir: str):
     regex = re.compile("metrics.\.json")
