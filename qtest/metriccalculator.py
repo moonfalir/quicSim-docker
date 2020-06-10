@@ -2,6 +2,7 @@ import os, json
 
 class MetricCalculator():
     _metricsperfile = []
+    qlogtunit = "ms"
     
     def calculateMetrics(self, logdir: str, tcpdumpfiles: list, qlogfile: str, istcpdump: bool, isquic: bool, sim: str, run: int):
         split_dir = logdir.split("/")
@@ -9,6 +10,7 @@ class MetricCalculator():
 
         totals = {
             "rtt_amount": 0,
+            "rttvar_amount": 0,
             "tp_time": 0,
             "gp_time": 0,
             "cwnd_amount": 0,
@@ -19,6 +21,7 @@ class MetricCalculator():
             "avg_throughput": 0.0,
             "avg_rtt": 0.0,
             "avg_cwnd": 0.0,
+            "avg_rttvar": 0.0,
             "loss_triggers": {}
         }
         for file in tcpdumpfiles:
@@ -35,6 +38,9 @@ class MetricCalculator():
             run_avgs["avg_goodput"] /= totals["gp_time"]
             run_avgs["avg_rtt"] /= totals["rtt_amount"]
             run_avgs["avg_cwnd"] /= totals["cwnd_amount"]
+            run_avgs["avg_rttvar"] /= totals["rttvar_amount"]
+            if self.qlogtunit == "us":
+                run_avgs["avg_rttvar"] /= 1000
         except ZeroDivisionError as z:
             print()
         id = next((index for (index, d) in enumerate(self._metricsperfile) if d["name"] == name and d["sim"] == sim), None)
@@ -46,6 +52,7 @@ class MetricCalculator():
                 "mdn_throughput": 0.0,
                 "mdn_rtt": 0.0,
                 "mdn_cwnd": 0.0,
+                "mdn_rttvar": 0.0,
                 "runs": []
             })
             id = len(self._metricsperfile) - 1
@@ -60,6 +67,10 @@ class MetricCalculator():
         events = qlog["traces"][0]["events"]
         # get structure of event fields
         event_fields = [x.lower() for x in qlog["traces"][0]["event_fields"]]
+
+        # get time unit
+        if "configuration" in qlog["traces"][0] and "time_units" in qlog["traces"][0]["configuration"]:
+            self.qlogtunit = qlog["traces"][0]["configuration"]["time_units"]
         try:
             event_type_id = event_fields.index("event_type")
         except ValueError as e:
@@ -68,8 +79,8 @@ class MetricCalculator():
 
         # loop through events to find CWND values
         for event in events:
-            if event[event_type_id] == "metrics_updated" and "cwnd" in event[data_id]:
-                self.getAvgCWND(run_avgs, totals, event[data_id])
+            if event[event_type_id] == "metrics_updated":
+                self.getAvgUpdatedMetrics(run_avgs, totals, event[data_id])
             elif event[event_type_id] == "packet_lost":
                 self.getLossTriggers(run_avgs, event[data_id])
 
@@ -82,11 +93,15 @@ class MetricCalculator():
         else:
             run_avgs["loss_triggers"][trigger] = 1
 
-    def getAvgCWND(self, run_avgs: dict, totals: dict, event_data: dict):
-        cur_cwnd = float(event_data["cwnd"])
-        run_avgs["avg_cwnd"] += cur_cwnd
-        totals["cwnd_amount"] += 1
-        prev_cwnd = cur_cwnd
+    def getAvgUpdatedMetrics(self, run_avgs: dict, totals: dict, event_data: dict):
+        if "cwnd" in event_data:
+            cur_cwnd = float(event_data["cwnd"])
+            run_avgs["avg_cwnd"] += cur_cwnd
+            totals["cwnd_amount"] += 1
+        if "rtt_variance" in event_data:
+            rttvar = float(event_data["rtt_variance"])
+            run_avgs["avg_rttvar"] += rttvar
+            totals["rttvar_amount"] += 1
 
     def getTcpDumpMetrics(self, file: str, isquic: bool, serverside: bool, run_avgs: dict, totals: dict):
         data = ""
@@ -370,6 +385,7 @@ class MetricCalculator():
         cwnds = []
         goodputs = []
         throughputs = []
+        rttvars = []
         medians = {}
 
         for run in runs:
@@ -377,11 +393,13 @@ class MetricCalculator():
             cwnds.append(run["avg_cwnd"])
             goodputs.append(run["avg_goodput"])
             throughputs.append(run["avg_throughput"])
+            rttvars.append(run["avg_rttvar"])
 
         rtts.sort()
         cwnds.sort()
         goodputs.sort()
         throughputs.sort()
+        rttvars.sort()
 
         middle = int(len(rtts) / 2)
         if len(rtts) == 1:
@@ -391,6 +409,7 @@ class MetricCalculator():
         medians["mdn_cwnd"] = cwnds[middle]
         medians["mdn_goodput"] = goodputs[middle]
         medians["mdn_throughput"] = throughputs[middle]
+        medians["mdn_rttvar"] = rttvars[middle]
 
         return medians
 
@@ -401,6 +420,7 @@ class MetricCalculator():
             self._metricsperfile[id]["mdn_throughput"] = medians["mdn_throughput"]
             self._metricsperfile[id]["mdn_rtt"] = medians["mdn_rtt"]
             self._metricsperfile[id]["mdn_cwnd"] = medians["mdn_cwnd"]
+            self._metricsperfile[id]["mdn_rttvar"] = medians["mdn_rttvar"]
         with open(outputdir + "/metrics.json", mode='w') as metrics_file:
             json.dump(self._metricsperfile, metrics_file, indent=4)
     
