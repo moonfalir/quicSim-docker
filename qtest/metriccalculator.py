@@ -14,7 +14,8 @@ class MetricCalculator():
             "tp_time": 0,
             "gp_time": 0,
             "cwnd_amount": 0,
-            "unacked_packets": {}
+            "unacked_packets": {},
+            "next_seq": 0
         }
         run_avgs = {
             "avg_goodput": 0.0,
@@ -22,6 +23,7 @@ class MetricCalculator():
             "avg_rtt": 0.0,
             "avg_cwnd": 0.0,
             "avg_rttvar": 0.0,
+            "retransmissions": 0,
             "loss_triggers": {}
         }
         for file in tcpdumpfiles:
@@ -53,6 +55,7 @@ class MetricCalculator():
                 "mdn_rtt": 0.0,
                 "mdn_cwnd": 0.0,
                 "mdn_rttvar": 0.0,
+                "mdn_retransmissions": 0,
                 "runs": []
             })
             id = len(self._metricsperfile) - 1
@@ -155,6 +158,7 @@ class MetricCalculator():
                     bytes_amount = float(packet['_source']['layers']["frame"]["frame.len"])
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
                     totals, run_avgs = self.addThroughputBytes(run_avgs, bytes_amount, totals, timestamp)
+                    self.checkRetransmissions(run_avgs,totals,packet['_source']['layers']["quic"], True)
                 except KeyError as e:
                     print(e)
             #find RTT
@@ -199,6 +203,7 @@ class MetricCalculator():
                     bytes_amount = float(packet['_source']['layers']["frame"]["frame.len"])
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
                     totals, run_avgs = self.addThroughputBytes(run_avgs, bytes_amount, totals, timestamp)
+                    self.checkRetransmissions(run_avgs,totals,packet['_source']['layers']["tcp"], False)
                 except KeyError as e:
                     print(e)
             #find RTT
@@ -378,6 +383,29 @@ class MetricCalculator():
         run_avgs["avg_goodput"] += bytes_amount
         totals["gp_time"] = timestamp
         return totals, run_avgs
+
+    def checkRetransmissions(self, run_avgs: dict, totals: dict, packet: dict, isquic: bool):
+        if not isquic:
+            cur_seq = int(packet["tcp.seq"])
+            if cur_seq < totals["next_seq"]:
+                run_avgs["retransmissions"] += 1
+            next_seq = int(packet["tcp.nxtseq"])
+            if next_seq > totals["next_seq"]:
+                totals["next_seq"] = next_seq
+        else:
+            if type(packet) == list:
+                packet = packet[0]
+            frames = packet["quic.frame"]
+            if type(frames) == dict:
+                frames = [frames]
+            for frame in frames:
+                if "quic.stream.offset" in frame:
+                    cur_seq = int(frame["quic.stream.offset"])
+                    if cur_seq < totals["next_seq"]:
+                        run_avgs["retransmissions"] += 1
+                    if cur_seq > totals["next_seq"]:
+                        totals["next_seq"] = cur_seq
+                    break
     
     # for each test scenario: find median values from all runs
     def getMedianValues(self, runs: list):
@@ -386,6 +414,7 @@ class MetricCalculator():
         goodputs = []
         throughputs = []
         rttvars = []
+        retrans = []
         medians = {}
 
         for run in runs:
@@ -394,12 +423,14 @@ class MetricCalculator():
             goodputs.append(run["avg_goodput"])
             throughputs.append(run["avg_throughput"])
             rttvars.append(run["avg_rttvar"])
+            retrans.append(run["retransmissions"])
 
         rtts.sort()
         cwnds.sort()
         goodputs.sort()
         throughputs.sort()
         rttvars.sort()
+        retrans.sort()
 
         middle = int(len(rtts) / 2)
         if len(rtts) == 1:
@@ -410,6 +441,7 @@ class MetricCalculator():
         medians["mdn_goodput"] = goodputs[middle]
         medians["mdn_throughput"] = throughputs[middle]
         medians["mdn_rttvar"] = rttvars[middle]
+        medians["mdn_retransmissions"] = retrans[middle]
 
         return medians
 
@@ -421,6 +453,7 @@ class MetricCalculator():
             self._metricsperfile[id]["mdn_rtt"] = medians["mdn_rtt"]
             self._metricsperfile[id]["mdn_cwnd"] = medians["mdn_cwnd"]
             self._metricsperfile[id]["mdn_rttvar"] = medians["mdn_rttvar"]
+            self._metricsperfile[id]["mdn_retransmissions"] = medians["mdn_retransmissions"]
         with open(outputdir + "/metrics.json", mode='w') as metrics_file:
             json.dump(self._metricsperfile, metrics_file, indent=4)
     
