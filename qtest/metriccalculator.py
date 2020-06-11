@@ -15,7 +15,12 @@ class MetricCalculator():
             "gp_time": 0,
             "cwnd_amount": 0,
             "unacked_packets": {},
-            "next_seq": 0
+            "next_seq": 0,
+            "ackranges": [{
+                "high_ack": 0,
+                "low_ack": 0
+            }],
+            "quic_offset_pns": {}
         }
         run_avgs = {
             "avg_goodput": 0.0,
@@ -24,6 +29,7 @@ class MetricCalculator():
             "avg_cwnd": 0.0,
             "avg_rttvar": 0.0,
             "retransmissions": 0,
+            "spurious_retrans": 0,
             "loss_triggers": {}
         }
         for file in tcpdumpfiles:
@@ -56,6 +62,7 @@ class MetricCalculator():
                 "mdn_cwnd": 0.0,
                 "mdn_rttvar": 0.0,
                 "mdn_retransmissions": 0,
+                "mdn_spurious_retrans": 0,
                 "runs": []
             })
             id = len(self._metricsperfile) - 1
@@ -247,6 +254,7 @@ class MetricCalculator():
                         "low_ack": first_range
                     }]
                     ackranges = self.getAckRangesQUIC(ackframe, ackranges, first_range)
+                    totals["ackranges"] = ackranges
                     # check if unacked packet is in ack ranges, if so calculate RTT
                     for index, pn_timestamp in totals["unacked_packets"].items():
                         if self.isAcked(ackranges, index, True):
@@ -282,6 +290,7 @@ class MetricCalculator():
                     "low_ack": 0
                 }]
                 ackranges = self.getAckRangesTCP(tcppacket, ackranges)
+                totals["ackranges"] = ackranges
                 for index, pn_timestamp in totals["unacked_packets"].items():
                     if self.isAcked(ackranges, index, False):
                         run_avgs["avg_rtt"] += (ack_timestamp - pn_timestamp)
@@ -389,6 +398,9 @@ class MetricCalculator():
             cur_seq = int(packet["tcp.seq"])
             if cur_seq < totals["next_seq"]:
                 run_avgs["retransmissions"] += 1
+                acked = self.isAcked(totals["ackranges"], cur_seq, isquic)
+                if acked:
+                    run_avgs["spurious_retrans"] += 1
             next_seq = int(packet["tcp.nxtseq"])
             if next_seq > totals["next_seq"]:
                 totals["next_seq"] = next_seq
@@ -403,6 +415,23 @@ class MetricCalculator():
                     cur_seq = int(frame["quic.stream.offset"])
                     if cur_seq < totals["next_seq"]:
                         run_avgs["retransmissions"] += 1
+                        if cur_seq in totals["quic_offset_pns"].keys():
+                            for pn in totals["quic_offset_pns"][cur_seq]:
+                                acked = self.isAcked(totals["ackranges"], pn, isquic)
+                                if acked:
+                                    run_avgs["spurious_retrans"] += 1
+                                    break
+
+                    if "quic.short" in packet:
+                        pn = int(packet["quic.short"]["quic.packet_number"])
+                    else:
+                        pn = int(packet["quic.packet_number"])
+
+                    if cur_seq in totals["quic_offset_pns"].keys():
+                        totals["quic_offset_pns"][cur_seq].append(pn)
+                    else:
+                        totals["quic_offset_pns"][cur_seq] = [pn]
+
                     if cur_seq > totals["next_seq"]:
                         totals["next_seq"] = cur_seq
                     break
@@ -415,6 +444,7 @@ class MetricCalculator():
         throughputs = []
         rttvars = []
         retrans = []
+        spur_retrans = []
         medians = {}
 
         for run in runs:
@@ -424,6 +454,7 @@ class MetricCalculator():
             throughputs.append(run["avg_throughput"])
             rttvars.append(run["avg_rttvar"])
             retrans.append(run["retransmissions"])
+            spur_retrans.append(run["spurious_retrans"])
 
         rtts.sort()
         cwnds.sort()
@@ -431,6 +462,7 @@ class MetricCalculator():
         throughputs.sort()
         rttvars.sort()
         retrans.sort()
+        spur_retrans.sort()
 
         middle = int(len(rtts) / 2)
         if len(rtts) == 1:
@@ -442,6 +474,7 @@ class MetricCalculator():
         medians["mdn_throughput"] = throughputs[middle]
         medians["mdn_rttvar"] = rttvars[middle]
         medians["mdn_retransmissions"] = retrans[middle]
+        medians["mdn_spurious_retrans"] = spur_retrans[middle]
 
         return medians
 
@@ -454,6 +487,7 @@ class MetricCalculator():
             self._metricsperfile[id]["mdn_cwnd"] = medians["mdn_cwnd"]
             self._metricsperfile[id]["mdn_rttvar"] = medians["mdn_rttvar"]
             self._metricsperfile[id]["mdn_retransmissions"] = medians["mdn_retransmissions"]
+            self._metricsperfile[id]["mdn_spurious_retrans"] = medians["mdn_spurious_retrans"]
         with open(outputdir + "/metrics.json", mode='w') as metrics_file:
             json.dump(self._metricsperfile, metrics_file, indent=4)
     
