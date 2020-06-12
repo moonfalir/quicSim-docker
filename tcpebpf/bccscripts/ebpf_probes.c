@@ -6,6 +6,7 @@
 #include <net/tcp.h>
 #include <linux/kernel.h>
 
+
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 //__u32   be32_to_cpu(const __be32);
@@ -75,6 +76,25 @@ BPF_PERF_OUTPUT(cwnd_change);
 BPF_PERF_OUTPUT(init_event);
 BPF_PERF_OUTPUT(mark_lost);
 BPF_PERF_OUTPUT(timer_calc);
+
+static unsigned int jiffiestousecs(const unsigned long j)
+{
+	/*
+	 * Hz usually doesn't go much further MSEC_PER_SEC.
+	 * jiffies_to_usecs() and usecs_to_jiffies() depend on that.
+	 */
+	//BUILD_BUG_ON(HZ > USEC_PER_SEC);
+
+#if !(USEC_PER_SEC % HZ)
+	return (USEC_PER_SEC / HZ) * j;
+#else
+# if BITS_PER_LONG == 32
+	return (HZ_TO_USEC_MUL32 * j) >> HZ_TO_USEC_SHR32;
+# else
+	return (j * HZ_TO_USEC_NUM) / HZ_TO_USEC_DEN;
+# endif
+#endif
+}
 
 // Trace CWND changes during congestion avoidance
 void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked) {
@@ -219,6 +239,34 @@ void trace_rack_timer(struct pt_regs *ctx, struct sock *sk) {
 		u32 lrtt = tp->rack.rtt_us;
 		u32 reo_wnd = get_tcp_reo_wnd(sk);
 		info.timer = lrtt - reo_wnd;
+
+		timer_calc.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+void trace_probe_timer(struct pt_regs *ctx, struct sock *sk) {
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct timer_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+		
+		struct tcp_sock *tp = tcp_sk(sk);
+		info.type = 2;
+
+		u32 timeout;
+		u32 srtt = tp->srtt_us; 
+		if (srtt) {
+			timeout = srtt >> 2;
+			u32 packets_out = tp->packets_out;
+			if (packets_out == 1)
+				timeout += jiffiestousecs(TCP_RTO_MIN);
+			else
+				timeout += jiffiestousecs(TCP_TIMEOUT_MIN);
+		} else {
+			timeout = jiffiestousecs(TCP_TIMEOUT_INIT);
+		}
+		info.timer = timeout;
 
 		timer_calc.perf_submit(ctx, &info, sizeof(info));
 	}

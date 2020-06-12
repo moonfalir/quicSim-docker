@@ -19,6 +19,7 @@ b.attach_kprobe(event="tcp_init_buffer_space", fn_name="trace_init_cong_control"
 b.attach_kprobe(event="tcp_mark_skb_lost", fn_name="trace_mark_lost")
 b.attach_kprobe(event="tcp_write_timer_handler", fn_name="trace_timeout_trigger")
 b.attach_kprobe(event="tcp_rack_mark_lost", fn_name="trace_rack_timer")
+b.attach_kretprobe(event="tcp_schedule_loss_probe", fn_name="trace_probe_timer")
 
 qlog = {
 	"qlog_version": "draft-01",
