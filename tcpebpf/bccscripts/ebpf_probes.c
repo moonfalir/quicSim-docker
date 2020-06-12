@@ -114,6 +114,16 @@ void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked
 		info.pkts_in_flight = tp->packets_out;
 		
 		cwnd_change.perf_submit(ctx, &info, sizeof(info));
+
+		const struct inet_connection_sock *icsk = inet_csk(sk);
+		struct timer_info info2 = {};
+		info2.timestamp = info.timestamp;
+		info2.saddr = info.saddr;
+		
+		info2.type = 3;
+		info2.timer = jiffiestousecs(icsk->icsk_rto);
+
+		timer_calc.perf_submit(ctx, &info2, sizeof(info2));
 	}
 }
 
