@@ -62,11 +62,19 @@ struct pkt_lost {
 	u32 seq;
 };
 
+struct timer_info {
+	u32 saddr;
+    u64 timestamp;
+	int type;
+	u32 timer;
+};
+
 
 // eBPF tables to output data
 BPF_PERF_OUTPUT(cwnd_change);
 BPF_PERF_OUTPUT(init_event);
 BPF_PERF_OUTPUT(mark_lost);
+BPF_PERF_OUTPUT(timer_calc);
 
 // Trace CWND changes during congestion avoidance
 void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked) {
@@ -183,5 +191,35 @@ void trace_timeout_trigger(struct pt_regs *ctx, struct sock *sk) {
 
 		if (info.loss_trigger > 0)
 			mark_lost.perf_submit(ctx, &info, sizeof(info));
+	}
+}
+
+
+static u32 get_tcp_reo_wnd(const struct sock *sk){
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct inet_connection_sock* icsk = (struct inet_connection_sock *)sk;
+
+	u32 min_rtt = tp->rtt_min.s[0].v;
+	u8 reo_steps = tp->rack.reo_wnd_steps;
+	u32 srtt = tp->srtt_us;
+	u32 reo_wnd = min((min_rtt >> 2) * reo_steps, srtt >> 3);
+
+	return reo_wnd;
+}
+
+void trace_rack_timer(struct pt_regs *ctx, struct sock *sk) {
+	u16 family = sk->__sk_common.skc_family;
+	if (family == AF_INET) {
+		struct timer_info info = {};
+		info.timestamp = bpf_ktime_get_ns();
+		info.saddr = sk->__sk_common.skc_rcv_saddr;
+		
+		struct tcp_sock *tp = tcp_sk(sk);
+		info.type = 1;
+		u32 lrtt = tp->rack.rtt_us;
+		u32 reo_wnd = get_tcp_reo_wnd(sk);
+		info.timer = lrtt - reo_wnd;
+
+		timer_calc.perf_submit(ctx, &info, sizeof(info));
 	}
 }
