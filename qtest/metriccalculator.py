@@ -20,7 +20,10 @@ class MetricCalculator():
                 "high_ack": 0,
                 "low_ack": 0
             }],
-            "quic_offset_pns": {}
+            "quic_offset_pns": {},
+            "rackt_count": 0,
+            "probet_count": 0,
+            "retranst_count":0
         }
         run_avgs = {
             "avg_goodput": 0.0,
@@ -30,6 +33,9 @@ class MetricCalculator():
             "avg_rttvar": 0.0,
             "retransmissions": 0,
             "spurious_retrans": 0,
+            "avg_rack_timer": 0.0,
+            "avg_probe_timer": 0.0,
+            "avg_retrans_timer": 0.0,
             "loss_triggers": {}
         }
         for file in tcpdumpfiles:
@@ -39,18 +45,21 @@ class MetricCalculator():
             run_avgs = self.getQlogMetrics(qlogfile, run_avgs, totals)
 
         # calculate averages
-        try:
-            run_avgs["avg_throughput"] /= 125.0
-            run_avgs["avg_throughput"] /= totals["tp_time"]
-            run_avgs["avg_goodput"] /= 125.0
-            run_avgs["avg_goodput"] /= totals["gp_time"]
-            run_avgs["avg_rtt"] /= totals["rtt_amount"]
-            run_avgs["avg_cwnd"] /= totals["cwnd_amount"]
-            run_avgs["avg_rttvar"] /= totals["rttvar_amount"]
-            if self.qlogtunit == "us":
-                run_avgs["avg_rttvar"] /= 1000
-        except ZeroDivisionError as z:
-            print()
+        run_avgs["avg_throughput"] = self.divide(run_avgs["avg_throughput"], 125.0)
+        run_avgs["avg_throughput"] = self.divide(run_avgs["avg_throughput"], totals["tp_time"])
+        run_avgs["avg_goodput"] = self.divide(run_avgs["avg_goodput"], 125.0)
+        run_avgs["avg_goodput"] = self.divide(run_avgs["avg_goodput"], totals["gp_time"])
+        run_avgs["avg_rtt"] = self.divide(run_avgs["avg_rtt"], totals["rtt_amount"])
+        run_avgs["avg_cwnd"] = self.divide(run_avgs["avg_cwnd"], totals["cwnd_amount"])
+        run_avgs["avg_rttvar"] = self.divide(run_avgs["avg_rttvar"], totals["rttvar_amount"])
+        run_avgs["avg_rack_timer"] = self.divide(run_avgs["avg_rack_timer"], totals["rackt_count"])
+        run_avgs["avg_probe_timer"] = self.divide(run_avgs["avg_probe_timer"], totals["probet_count"])
+        run_avgs["avg_retrans_timer"] = self.divide(run_avgs["avg_retrans_timer"], totals["retranst_count"])
+        if self.qlogtunit == "us":
+            run_avgs["avg_rttvar"] = self.divide(run_avgs["avg_rttvar"], 1000)
+            run_avgs["avg_rack_timer"] = self.divide(run_avgs["avg_rack_timer"], 1000)
+            run_avgs["avg_probe_timer"] = self.divide(run_avgs["avg_probe_timer"], 1000)
+            run_avgs["avg_retrans_timer"] = self.divide(run_avgs["avg_retrans_timer"], 1000)
         id = next((index for (index, d) in enumerate(self._metricsperfile) if d["name"] == name and d["sim"] == sim), None)
         if id == None:
             self._metricsperfile.append({
@@ -63,10 +72,23 @@ class MetricCalculator():
                 "mdn_rttvar": 0.0,
                 "mdn_retransmissions": 0,
                 "mdn_spurious_retrans": 0,
+                "mdn_rack_timer": 0.0,
+                "mdn_probe_timer": 0.0,
+                "mdn_retrans_timer": 0.0,
                 "runs": []
             })
             id = len(self._metricsperfile) - 1
         self._metricsperfile[id]["runs"].append(run_avgs)
+
+    def divide(self, p1, p2):
+        try:
+            return (p1 /p2)
+        except ZeroDivisionError as z:
+            print("Zero division")
+            return 0.0
+        except Exception as e:
+            print("Division error")
+            return 0.0
 
     def getQlogMetrics(self, file: str, run_avgs: dict, totals: dict):
         data = ""
@@ -93,6 +115,8 @@ class MetricCalculator():
                 self.getAvgUpdatedMetrics(run_avgs, totals, event[data_id])
             elif event[event_type_id] == "packet_lost":
                 self.getLossTriggers(run_avgs, event[data_id])
+            elif "_timer" in event[event_type_id]:
+                self.getTimerValues(run_avgs, totals, event[data_id], event[event_type_id])
 
         return run_avgs
 
@@ -112,6 +136,20 @@ class MetricCalculator():
             rttvar = float(event_data["rtt_variance"])
             run_avgs["avg_rttvar"] += rttvar
             totals["rttvar_amount"] += 1
+    
+    def getTimerValues(self, run_avgs: dict, totals: dict, event_data: dict, timer_type: str):
+        if timer_type == "rack_timer":
+            timer = float(event_data["timer"])
+            run_avgs["avg_rack_timer"] += timer
+            totals["rackt_count"] += 1
+        elif timer_type == "probe_timer":
+            timer = float(event_data["timer"])
+            run_avgs["avg_probe_timer"] += timer
+            totals["probet_count"] += 1
+        elif timer_type == "retrans_timer":
+            timer = float(event_data["timer"])
+            run_avgs["avg_retrans_timer"] += timer
+            totals["retranst_count"] += 1
 
     def getTcpDumpMetrics(self, file: str, isquic: bool, serverside: bool, run_avgs: dict, totals: dict):
         data = ""
@@ -445,6 +483,9 @@ class MetricCalculator():
         rttvars = []
         retrans = []
         spur_retrans = []
+        rackt = []
+        probet = []
+        retranst = []
         medians = {}
 
         for run in runs:
@@ -455,6 +496,9 @@ class MetricCalculator():
             rttvars.append(run["avg_rttvar"])
             retrans.append(run["retransmissions"])
             spur_retrans.append(run["spurious_retrans"])
+            rackt.append(run["avg_rack_timer"])
+            probet.append(run["avg_probe_timer"])
+            retranst.append(run["avg_retrans_timer"])
 
         rtts.sort()
         cwnds.sort()
@@ -463,6 +507,9 @@ class MetricCalculator():
         rttvars.sort()
         retrans.sort()
         spur_retrans.sort()
+        rackt.sort()
+        probet.sort()
+        retranst.sort()
 
         middle = int(len(rtts) / 2)
         if len(rtts) == 1:
@@ -475,19 +522,30 @@ class MetricCalculator():
         medians["mdn_rttvar"] = rttvars[middle]
         medians["mdn_retransmissions"] = retrans[middle]
         medians["mdn_spurious_retrans"] = spur_retrans[middle]
+        medians["mdn_rack_timer"] = rackt[middle]
+        medians["mdn_probe_timer"] = probet[middle]
+        medians["mdn_retrans_timer"] = retranst[middle]
 
         return medians
 
+    def addMediansToResults(self, metricsfile: list):
+        for id in range(0, len(metricsfile)):
+            medians = self.getMedianValues(metricsfile[id]["runs"])
+            metricsfile[id]["mdn_goodput"] = medians["mdn_goodput"]
+            metricsfile[id]["mdn_throughput"] = medians["mdn_throughput"]
+            metricsfile[id]["mdn_rtt"] = medians["mdn_rtt"]
+            metricsfile[id]["mdn_cwnd"] = medians["mdn_cwnd"]
+            metricsfile[id]["mdn_rttvar"] = medians["mdn_rttvar"]
+            metricsfile[id]["mdn_retransmissions"] = medians["mdn_retransmissions"]
+            metricsfile[id]["mdn_spurious_retrans"] = medians["mdn_spurious_retrans"]
+            metricsfile[id]["mdn_rack_timer"] = medians["mdn_rack_timer"]
+            metricsfile[id]["mdn_probe_timer"] = medians["mdn_probe_timer"]
+            metricsfile[id]["mdn_retrans_timer"] = medians["mdn_retrans_timer"]
+        
+        return metricsfile
+
     def saveMetrics(self, outputdir: str):
-        for id in range(0, len(self._metricsperfile)):
-            medians = self.getMedianValues(self._metricsperfile[id]["runs"])
-            self._metricsperfile[id]["mdn_goodput"] = medians["mdn_goodput"]
-            self._metricsperfile[id]["mdn_throughput"] = medians["mdn_throughput"]
-            self._metricsperfile[id]["mdn_rtt"] = medians["mdn_rtt"]
-            self._metricsperfile[id]["mdn_cwnd"] = medians["mdn_cwnd"]
-            self._metricsperfile[id]["mdn_rttvar"] = medians["mdn_rttvar"]
-            self._metricsperfile[id]["mdn_retransmissions"] = medians["mdn_retransmissions"]
-            self._metricsperfile[id]["mdn_spurious_retrans"] = medians["mdn_spurious_retrans"]
+        self._metricsperfile = self.addMediansToResults(self._metricsperfile)
         with open(outputdir + "/metrics.json", mode='w') as metrics_file:
             json.dump(self._metricsperfile, metrics_file, indent=4)
     

@@ -1,33 +1,5 @@
 import sys, os, re, json
-
-def getMedianValues(runs: list):
-        rtts = []
-        cwnds = []
-        goodputs = []
-        throughputs = []
-        medians = {}
-
-        for run in runs:
-            rtts.append(run["avg_rtt"])
-            cwnds.append(run["avg_cwnd"])
-            goodputs.append(run["avg_goodput"])
-            throughputs.append(run["avg_throughput"])
-
-        rtts.sort()
-        cwnds.sort()
-        goodputs.sort()
-        throughputs.sort()
-
-        middle = int(len(rtts) / 2)
-        if len(rtts) == 1:
-            middle = 0
-
-        medians["mdn_rtt"] = rtts[middle]
-        medians["mdn_cwnd"] = cwnds[middle]
-        medians["mdn_goodput"] = goodputs[middle]
-        medians["mdn_throughput"] = throughputs[middle]
-
-        return medians
+from metriccalculator import MetricCalculator
 
 def groupMetrics(logdir: str):
     print("grouping metrics")
@@ -57,13 +29,8 @@ def groupMetrics(logdir: str):
             runs = testcase['runs']
             metrics[mindex]['runs'].extend(runs)
     # loop through each entry
-    for id in range(0, len(metrics)):
-        # find median for each value
-        medians = getMedianValues(metrics[id]['runs'])
-        metrics[id]["mdn_goodput"] = medians["mdn_goodput"]
-        metrics[id]["mdn_throughput"] = medians["mdn_throughput"]
-        metrics[id]["mdn_rtt"] = medians["mdn_rtt"]
-        metrics[id]["mdn_cwnd"] = medians["mdn_cwnd"]
+    metric_calc = MetricCalculator()
+    metric_calc.addMediansToResults(metrics)
     with open(logdir + "/metrics.json", mode='w') as metrics_file:
         json.dump(metrics, metrics_file, indent=4)
 
