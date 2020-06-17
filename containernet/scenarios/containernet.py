@@ -40,6 +40,14 @@ from droprate import Droprate
 droprate = Droprate()
 droprate.addCLIArguments(sub_parser)
 
+#Add reorder arguments
+sub_parser = subparsers.add_parser('reorder')
+sub_parser.add_argument('-k', action='store_true', help='Flag to add kernel debug volume to container')
+sys.path.append(curdir + '/reorder')
+from reorder import Reorder
+reorder = Reorder()
+reorder.addCLIArguments(sub_parser)
+
 sim_args = sim_parser.parse_args()
 
 available_scenarios = ['simple_p2p']
@@ -67,12 +75,19 @@ def run_droprate():
     droprate = Droprate()
     curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
     droprate.run(sim_args, curtime, entrypoint)
+
+def run_reorder():
+    entrypoint = "./entrypoint_min.sh"
+    reorder = Reorder()
+    curtime = ti.strftime("%Y-%m-%d-%H-%M", ti.gmtime())
+    reorder.run(sim_args, curtime, entrypoint)
     
 switch = {
     'simple_p2p': run_simple_p2p,
     'blackhole': run_blackhole,
     'droplist': run_droplist,
-    'droprate': run_droprate
+    'droprate': run_droprate,
+    'reorder': run_reorder
 }
 func = switch.get(sim_args.scenario)
 func()
