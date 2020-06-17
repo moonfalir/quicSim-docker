@@ -56,25 +56,27 @@ class QTest:
         )
 
         print("Server: " + servername + ". Client: " + clientname + ". Test case: " + scenario["qns"] + ". Simulation: QNS")
-        try:
-            r = subprocess.run(qnscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
-            output = r.stdout
-        except subprocess.TimeoutExpired as ex:
-            output = ex.stdout
-            expired = True
+        runsuccess = False
+        while not runsuccess:
+            try:
+                r = subprocess.run(qnscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
+                output = r.stdout
+            except subprocess.TimeoutExpired as ex:
+                output = ex.stdout
+                expired = True
 
-        with open(testoutputdir + "/qns.out", "w+") as outputfile:
-            outputfile.write(output.decode('utf-8'))
+            with open(testoutputdir + "/qns.out", "w+") as outputfile:
+                outputfile.write(output.decode('utf-8'))
 
-        filemngr = FileManager()
-        
-        clpars = clients[clientid]['clpars_qns']
-        clpars = clpars.replace("$CURTIME" , curtime)
-        clpars = clpars.replace("$BYTESREQ", bytesreq)
-        svpars = servers[serverid]['svpars_qns']
-        svpars = svpars.replace("$CURTIME" , curtime)
-        filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
-        filemngr.pcaptojson(testlogdir, "QNS", met_calc, isquic, run)
+            filemngr = FileManager()
+            
+            clpars = clients[clientid]['clpars_qns']
+            clpars = clpars.replace("$CURTIME" , curtime)
+            clpars = clpars.replace("$BYTESREQ", bytesreq)
+            svpars = servers[serverid]['svpars_qns']
+            svpars = svpars.replace("$CURTIME" , curtime)
+            filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
+            runsuccess = filemngr.pcaptojson(testlogdir, "QNS", met_calc, isquic, run)
 
         scenario_min = scenario["min"]
         if not isquic:
@@ -94,23 +96,25 @@ class QTest:
             "docker-compose -f ../containernet/docker-compose.yml up --abort-on-container-exit"
         )
         print("Server: " + servername + ". Client: " + clientname + ". Test case: " + scenario["min"] + ". Simulation: MININET")
-        try:
-            r = subprocess.run(mincmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
-            output = r.stdout
-        except subprocess.TimeoutExpired as ex:
-            output = ex.stdout
-            expired = True
+        runsuccess = False
+        while not runsuccess:
+            try:
+                r = subprocess.run(mincmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
+                output = r.stdout
+            except subprocess.TimeoutExpired as ex:
+                output = ex.stdout
+                expired = True
 
-        with open(testoutputdir + "/min.out", "w+") as outputfile:
-            outputfile.write(output.decode('utf-8'))
-         
-        clpars = clients[clientid]['clpars_min']
-        clpars = clpars.replace("$CURTIME" , curtime)
-        clpars = clpars.replace("$BYTESREQ", bytesreq)
-        svpars = servers[serverid]['svpars_min']
-        svpars = svpars.replace("$CURTIME" , curtime)
-        filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
-        filemngr.pcaptojson(testlogdir, "MIN", met_calc, isquic, run)
+            with open(testoutputdir + "/min.out", "w+") as outputfile:
+                outputfile.write(output.decode('utf-8'))
+            
+            clpars = clients[clientid]['clpars_min']
+            clpars = clpars.replace("$CURTIME" , curtime)
+            clpars = clpars.replace("$BYTESREQ", bytesreq)
+            svpars = servers[serverid]['svpars_min']
+            svpars = svpars.replace("$CURTIME" , curtime)
+            filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
+            runsuccess = filemngr.pcaptojson(testlogdir, "MIN", met_calc, isquic, run)
 
     def run(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
@@ -264,26 +268,28 @@ class QTestDist:
             o_file = "/min.out"
             cmd = cmd + "docker-compose -f ../containernet/docker-compose.yml up --abort-on-container-exit"
         print("Server: " + testcase["server"] + ". Client: " + testcase["client"] + ". Test case: " + testcase["scenario"] + ". Simulation: " + testcase["sim"])
-        try:
-            r = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
-            output = r.stdout
-        except subprocess.TimeoutExpired as ex:
-            output = ex.stdout
-            expired = True
+        runsuccess = False
+        while not runsuccess:
+            try:
+                r = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
+                output = r.stdout
+            except subprocess.TimeoutExpired as ex:
+                output = ex.stdout
+                expired = True
 
 
-        with open(testcase["testoutputdir"] + o_file, "w+") as outputfile:
-            outputfile.write(output.decode('utf-8'))
+            with open(testcase["testoutputdir"] + o_file, "w+") as outputfile:
+                outputfile.write(output.decode('utf-8'))
 
-        filemngr = FileManager()
-        
-        clpars = testcase["client_params"]
-        clpars = clpars.replace("$CURTIME" , testcase["curtime"])
-        clpars = clpars.replace("$BYTESREQ", bytesreq)
-        svpars = testcase["server_params"]
-        svpars = svpars.replace("$CURTIME" , testcase["curtime"])
-        filemngr.addTestInfo(testcase["testlogdir"], testcase["scenario"], clpars, svpars, testcase["client"], testcase["client"], testcase["sim"])
-        filemngr.pcaptojson(testcase["testlogdir"], testcase["sim"], met_calc, isquic, testcase["run"])
+            filemngr = FileManager()
+            
+            clpars = testcase["client_params"]
+            clpars = clpars.replace("$CURTIME" , testcase["curtime"])
+            clpars = clpars.replace("$BYTESREQ", bytesreq)
+            svpars = testcase["server_params"]
+            svpars = svpars.replace("$CURTIME" , testcase["curtime"])
+            filemngr.addTestInfo(testcase["testlogdir"], testcase["scenario"], clpars, svpars, testcase["client"], testcase["client"], testcase["sim"])
+            runsuccess = filemngr.pcaptojson(testcase["testlogdir"], testcase["sim"], met_calc, isquic, testcase["run"])
 
     def runDistributed(self, id):
         testcasesfile = open(os.path.dirname(os.path.abspath(__file__)) + "/test.json", "r")

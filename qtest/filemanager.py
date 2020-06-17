@@ -104,8 +104,16 @@ class FileManager:
             for f in filenames:
                 if regex.match(f):
                     jsonfiles.append(os.path.join(dirpath, f))
-        met_calc.calculateMetrics(logdir, jsonfiles, self.serverqlog, True, isquic, sim, run)
+        
+        pcapfile = open(jsonfiles[0], 'r').read()
+        decrypterrors = pcapfile.count("quic.decryption_failed")
+
+        if decrypterrors < 20:
+            met_calc.calculateMetrics(logdir, jsonfiles, self.serverqlog, True, isquic, sim, run)
+            
         # remove converted pcap files
         for jsonfile in jsonfiles:
             os.remove(jsonfile)     
         self.serverqlog = ""
+
+        return (decrypterrors < 20)
