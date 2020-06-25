@@ -75,9 +75,10 @@ def setTimeInfo(timestamp):
 	global reference_time
 	if reference_time == -1:
 		reference_time = start_time + (ctypes.c_float(timestamp).value / 1000000000)
+		reference_time = ti.time()
 		qlog["traces"][0]["common_fields"]["reference_time"] = reference_time
 	time = reference_time - (start_time + (ctypes.c_float(timestamp).value / 1000000000))
-	return time
+	return reference_time - ti.time()
 
 prev_met_upd_t = 0
 # Log new CWND values
