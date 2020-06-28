@@ -22,6 +22,12 @@ def groupMetrics(logdir: str):
                     "mdn_throughput": 0.0,
                     "mdn_rtt": 0.0,
                     "mdn_cwnd": 0.0,
+                    "mdn_rttvar": 0.0,
+                    "mdn_retransmissions": 0,
+                    "mdn_spurious_retrans": 0,
+                    "mdn_rack_timer": 0.0,
+                    "mdn_probe_timer": 0.0,
+                    "mdn_retrans_timer": 0.0,
                     "runs": []
                 })
                 mindex = len(metrics) - 1
