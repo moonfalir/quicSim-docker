@@ -58,7 +58,7 @@ class QTest:
         print("Server: " + servername + ". Client: " + clientname + ". Test case: " + scenario["qns"] + ". Simulation: QNS")
         runsuccess = False
         filemngr = FileManager()
-        while not runsuccess and "reorder" not in scenario["qns"]:
+        while not runsuccess:
             try:
                 r = subprocess.run(qnscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
                 output = r.stdout
@@ -190,8 +190,7 @@ class QTestDist:
             "cl_commit": clients[clientid]['clcommit'],
             "sv_commit": servers[serverid]['svcommit']
         }
-        if "reorder" not in scenario["qns"]:
-            testlist.append(testcase)
+        testlist.append(testcase)
 
         scenario_min = scenario["min"]
         tcp_config = ""
