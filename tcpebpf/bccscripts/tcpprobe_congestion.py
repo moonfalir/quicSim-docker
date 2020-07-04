@@ -29,6 +29,7 @@ qlog = {
 			"common_fields": {
 				"reference_time": -1
 			},
+			"configuration": {"time_units": "ms"},
 			"event_fields": [
 				"relative_time",
 				"category",

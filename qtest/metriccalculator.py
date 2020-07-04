@@ -60,6 +60,7 @@ class MetricCalculator():
             run_avgs["avg_rack_timer"] = self.divide(run_avgs["avg_rack_timer"], 1000)
             run_avgs["avg_probe_timer"] = self.divide(run_avgs["avg_probe_timer"], 1000)
             run_avgs["avg_retrans_timer"] = self.divide(run_avgs["avg_retrans_timer"], 1000)
+            run_avgs["avg_rtt"] = self.divide(run_avgs["avg_rtt"], 1000)
         id = next((index for (index, d) in enumerate(self._metricsperfile) if d["name"] == name and d["sim"] == sim), None)
         if id == None:
             self._metricsperfile.append({
@@ -136,6 +137,10 @@ class MetricCalculator():
             rttvar = float(event_data["rtt_variance"])
             run_avgs["avg_rttvar"] += rttvar
             totals["rttvar_amount"] += 1
+        if "latest_rtt" in event_data:
+            lat_rtt = float(event_data["latest_rtt"])
+            run_avgs["avg_rtt"] += lat_rtt
+            totals["rtt_amount"] += 1
     
     def getTimerValues(self, run_avgs: dict, totals: dict, event_data: dict, timer_type: str):
         if timer_type == "rack_timer":
@@ -207,7 +212,7 @@ class MetricCalculator():
                 except KeyError as e:
                     print(e)
             #find RTT
-            totals, run_avgs = self.trackRTTValuesQUIC(packet, run_avgs, totals, isserver)
+            #totals, run_avgs = self.trackRTTValuesQUIC(packet, run_avgs, totals, isserver)
             #count retransmission
         else:
             if isserver:
@@ -252,7 +257,7 @@ class MetricCalculator():
                 except KeyError as e:
                     print(e)
             #find RTT
-            totals, run_avgs = self.trackRTTValuesTCP(packet, run_avgs, totals, isserver)
+            #totals, run_avgs = self.trackRTTValuesTCP(packet, run_avgs, totals, isserver)
             #count retransmission
         else:
             if isserver:
