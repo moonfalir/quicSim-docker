@@ -211,9 +211,8 @@ class MetricCalculator():
                     self.checkRetransmissions(run_avgs,totals,packet['_source']['layers']["quic"], True)
                 except KeyError as e:
                     print(e)
-            #find RTT
-            #totals, run_avgs = self.trackRTTValuesQUIC(packet, run_avgs, totals, isserver)
-            #count retransmission
+            #tracked acked packets
+            self.trackAckedPktsQUIC(packet, run_avgs, totals, isserver)
         else:
             if isserver:
                 try:
@@ -257,8 +256,7 @@ class MetricCalculator():
                 except KeyError as e:
                     print(e)
             #find RTT
-            #totals, run_avgs = self.trackRTTValuesTCP(packet, run_avgs, totals, isserver)
-            #count retransmission
+            self.trackAckedPktsTCP(packet, run_avgs, totals, isserver)
         else:
             if isserver:
                 try:
@@ -269,22 +267,8 @@ class MetricCalculator():
                     print(e)
 
         return totals, run_avgs
-    def trackRTTValuesQUIC(self, packet: dict, run_avgs: dict, totals: dict, isserver: bool):
-        if isserver:
-            try: 
-                # get quic packetnumber
-                if "quic.short" in packet['_source']['layers']["quic"]:
-                    pn = int(packet['_source']['layers']["quic"]["quic.short"]["quic.packet_number"])
-                else:
-                    pn = int(packet['_source']['layers']["quic"]["quic.packet_number"])
-                timestamp = float(packet['_source']['layers']['frame']['frame.time_relative']) * 1000
-                # log packetnumber timestamp to compare later with ack
-                totals["unacked_packets"][pn] = timestamp
-            except TypeError as t:
-                print(t)
-            except KeyError as e:
-                print(e)
-        else:
+    def trackAckedPktsQUIC(self, packet: dict, run_avgs: dict, totals: dict, isserver: bool):
+        if not isserver:
             try:
                 ackframe = self.getAckFrame(packet)
                 if ackframe:
@@ -297,32 +281,15 @@ class MetricCalculator():
                         "low_ack": first_range
                     }]
                     ackranges = self.getAckRangesQUIC(ackframe, ackranges, first_range)
+                    ackranges.reverse()
                     totals["ackranges"] = ackranges
-                    # check if unacked packet is in ack ranges, if so calculate RTT
-                    for index, pn_timestamp in totals["unacked_packets"].items():
-                        if self.isAcked(ackranges, index, True):
-                            run_avgs["avg_rtt"] += (ack_timestamp - pn_timestamp)
-                            totals["rtt_amount"] += 1
-                            acked_packets.append(index)
-                    for acked_packet in acked_packets:
-                        del totals["unacked_packets"][acked_packet]
             except TypeError as t:
                 print(t)
             except KeyError as e:
                 print(e)
-        return totals, run_avgs
 
-    def trackRTTValuesTCP(self, packet: dict, run_avgs: dict, totals: dict, isserver: bool):
-        if isserver:
-            try: 
-                pn = int(packet['_source']['layers']["tcp"]["tcp.seq"])
-                timestamp = float(packet['_source']['layers']['frame']['frame.time_relative']) * 1000
-                totals["unacked_packets"][pn] = timestamp
-            except TypeError as t:
-                print(t)
-            except KeyError as e:
-                print(e)
-        else:
+    def trackAckedPktsTCP(self, packet: dict, run_avgs: dict, totals: dict, isserver: bool):
+        if not isserver:
             try:
                 tcppacket = packet['_source']['layers']["tcp"] 
                 ack_timestamp = float(packet['_source']['layers']['frame']['frame.time_relative']) * 1000
@@ -334,18 +301,10 @@ class MetricCalculator():
                 }]
                 ackranges = self.getAckRangesTCP(tcppacket, ackranges)
                 totals["ackranges"] = ackranges
-                for index, pn_timestamp in totals["unacked_packets"].items():
-                    if self.isAcked(ackranges, index, False):
-                        run_avgs["avg_rtt"] += (ack_timestamp - pn_timestamp)
-                        totals["rtt_amount"] += 1
-                        acked_packets.append(index)
-                for acked_packet in acked_packets:
-                    del totals["unacked_packets"][acked_packet]
             except TypeError as t:
                 print(t)
             except KeyError as e:
                 print(e)
-        return totals, run_avgs
 
     def getAckFrame(self, packet: dict):
         frames = packet['_source']['layers']["quic"]["quic.frame"]
