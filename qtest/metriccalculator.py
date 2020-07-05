@@ -217,25 +217,7 @@ class MetricCalculator():
             if isserver:
                 try:
                     frames = packet['_source']['layers']["quic"]["quic.frame"]
-                    bytes_amount = 0
-                    # if quic packet contains multiple frames, go through all
-                    if isinstance(frames, list):
-                        for frame in frames:
-                            # if stream frames contains length, get value
-                            if "quic.stream.length" in frame:
-                                bytes_amount += float(frame['quic.stream.length'])
-                            # else calculate length by parsing data
-                            else:
-                                if "quic.stream_data" in frame:
-                                    data = frame["quic.stream_data"].replace(':', '')
-                                    bytes_amount = len(data) / 2
-                    else:
-                        if "quic.stream.length" in frames:
-                                bytes_amount += float(frames['quic.stream.length'])
-                        else:
-                            if "quic.stream_data" in frames:
-                                data = frames["quic.stream_data"].replace(':', '')
-                                bytes_amount = len(data) / 2
+                    bytes_amount = self.getQuicFrameLength(frames)
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
                     totals, run_avgs = self.addGoodputBytes(run_avgs, bytes_amount, totals, timestamp)
                 except KeyError as e:
@@ -385,6 +367,29 @@ class MetricCalculator():
                     break
         return acked
 
+    def getQuicFrameLength(self, frames):
+        bytes_amount = 0
+        # if quic packet contains multiple frames, go through all
+        if isinstance(frames, list):
+            for frame in frames:
+                # if stream frames contains length, get value
+                if "quic.stream.length" in frame:
+                    bytes_amount += float(frame['quic.stream.length'])
+                # else calculate length by parsing data
+                else:
+                    if "quic.stream_data" in frame:
+                        data = frame["quic.stream_data"].replace(':', '')
+                        bytes_amount = len(data) / 2
+        else:
+            if "quic.stream.length" in frames:
+                    bytes_amount += float(frames['quic.stream.length'])
+            else:
+                if "quic.stream_data" in frames:
+                    data = frames["quic.stream_data"].replace(':', '')
+                    bytes_amount = len(data) / 2
+        
+        return bytes_amount
+
     def addThroughputBytes(self, run_avgs: dict, bytes_amount: float, totals: dict, timestamp: float):
         run_avgs["avg_throughput"] += bytes_amount
         totals["tp_time"] = timestamp
@@ -399,6 +404,8 @@ class MetricCalculator():
         if not isquic:
             cur_seq = int(packet["tcp.seq"])
             if cur_seq < totals["next_seq"]:
+                bytes_amount = float(packet["tcp.len"])
+                run_avgs["avg_goodput"] -= bytes_amount
                 run_avgs["retransmissions"] += 1
                 acked = self.isAcked(totals["ackranges"], cur_seq, isquic)
                 if acked:
@@ -416,6 +423,8 @@ class MetricCalculator():
                 if "quic.stream.offset" in frame:
                     cur_seq = int(frame["quic.stream.offset"])
                     if cur_seq < totals["next_seq"]:
+                        bytes_amount = self.getQuicFrameLength(frames)
+                        run_avgs["avg_goodput"] -= bytes_amount
                         run_avgs["retransmissions"] += 1
                         if cur_seq in totals["quic_offset_pns"].keys():
                             for pn in totals["quic_offset_pns"][cur_seq]:
