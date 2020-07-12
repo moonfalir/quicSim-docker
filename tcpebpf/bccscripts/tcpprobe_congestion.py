@@ -36,7 +36,9 @@ qlog = {
 				"event_type",
 				"data"
 			],
-			"events": [],
+			"events": [
+				["0", "transport", "datagrams_received", {"byte_length": 1280, "count": 1}]
+			],
 			"vantage_point": {
 				"name": "iperf",
 				"type": "server"
@@ -44,6 +46,11 @@ qlog = {
 		}
 	]
 }
+final_pkt_evt = ["0", "transport", "packet_received", {
+	"packet_type": "1RTT", "header": {
+		"packet_number": "2656", "packet_size": 30, "dcid": "tcpebpf", "scid": ""
+		}, 
+		"frames": [{"error_code": 0, "error_space": "application", "frame_type": "connection_close", "raw_error_code": 0, "reason": ""}]}]
 
 # Congestion algorithm states
 ca_states = {}
@@ -105,6 +112,8 @@ def print_cwnd_change(cpu, data, size):
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
+		global final_pkt_evt
+		final_pkt_evt[0] = output_arr[0]
 
 # Log initial congestion control values
 def print_init_cong_control(cpu, data, size):
@@ -128,6 +137,8 @@ def print_init_cong_control(cpu, data, size):
 			}
 		)
 		qlog["traces"][0]["events"].append(output_arr)
+		global final_pkt_evt
+		final_pkt_evt[0] = output_arr[0]
 
 def print_mark_lost(cpu, data, size):
 	event = b["mark_lost"].event(data)
@@ -154,6 +165,8 @@ def print_mark_lost(cpu, data, size):
 		)
 		if trigger != "":
 			qlog["traces"][0]["events"].append(output_arr)
+		global final_pkt_evt
+		final_pkt_evt[0] = output_arr[0]
 
 def print_timer_used(cpu, data, size):
 	event = b["timer_calc"].event(data)
@@ -180,6 +193,8 @@ def print_timer_used(cpu, data, size):
 		)
 
 		qlog["traces"][0]["events"].append(output_arr)
+		global final_pkt_evt
+		final_pkt_evt[0] = output_arr[0]
 
 print("Tracing tcp events ... Hit Ctrl-C to end")
 
@@ -198,6 +213,7 @@ while 1:
 	try:
 		b.perf_buffer_poll()
 	except KeyboardInterrupt:
+		qlog["traces"][0]["events"].append(final_pkt_evt)
 		with open('/logs/' + outputfile + '.qlog', 'w') as f:
 			f.write(json.dumps(qlog))
 		exit()
