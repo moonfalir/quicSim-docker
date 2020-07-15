@@ -8,7 +8,7 @@ params = os.environ["SERVER_PARAMS"]
 # start iperf transfer
 subprocess.run("iperf3 " + params, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-time.sleep(2)
+time.sleep(5)
 
 # stop eBPF capture
 ebpf.send_signal(signal.SIGINT)

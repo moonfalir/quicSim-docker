@@ -12,6 +12,7 @@ if [ "$ROLE" == "client" ]; then
     /wait-for-it.sh sim:57832 -s -t 30  
     git rev-parse HEAD > /logs/cl_commit.txt  
     python3 examples/http3_client.py -v $CLIENT_PARAMS
+    sleep 5
 elif [ "$ROLE" == "server" ]; then
     python3 tcp_server.py --port 57830
     git rev-parse HEAD > /logs/sv_commit.txt
