@@ -289,7 +289,7 @@ class QTestDist:
             clpars = clpars.replace("$BYTESREQ", bytesreq)
             svpars = testcase["server_params"]
             svpars = svpars.replace("$CURTIME" , testcase["curtime"])
-            filemngr.addTestInfo(testcase["testlogdir"], testcase["scenario"], clpars, svpars, testcase["client"], testcase["client"], testcase["sim"])
+            filemngr.addTestInfo(testcase["testlogdir"], testcase["scenario"], clpars, svpars, testcase["client"], testcase["server"], testcase["sim"])
             runsuccess = filemngr.pcaptojson(testcase["testlogdir"], testcase["sim"], met_calc, isquic, testcase["run"])
 
     def runDistributed(self, id):

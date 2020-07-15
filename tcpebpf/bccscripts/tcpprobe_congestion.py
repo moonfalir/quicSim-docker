@@ -104,7 +104,7 @@ def print_cwnd_change(cpu, data, size):
 		output_arr.append(
 			{
 				"cwnd": str(event.snd_cwnd),
-				"packets_in_flight": str(event.pkts_in_flight),
+				"bytes_in_flight": str(event.pkts_in_flight),
 				"min_rtt": "%.2f" % (event.min_rtt / 1000),
 				"smoothed_rtt": "%.2f" % (event.smoothed_rtt / 1000),
 				"latest_rtt": "%.2f" % (event.latest_rtt / 1000),
