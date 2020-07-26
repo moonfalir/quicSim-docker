@@ -1,6 +1,7 @@
 #define KBUILD_MODNAME "tcpcctrace"
 #include <uapi/linux/ptrace.h>
 #include <uapi/linux/tcp.h>
+#include <uapi/linux/if_ether.h>
 #include <net/sock.h>
 #include <bcc/proto.h>
 #include <net/tcp.h>
@@ -182,19 +183,21 @@ static struct tcphdr *skb_to_tcphdr(const struct sk_buff *skb)
 }
 
 // Trace packets marked as lost
-void trace_mark_lost(struct pt_regs *ctx, struct sock *sk, struct sk_buff *skb){
+int trace_mark_lost(struct pt_regs *ctx, struct sock *sk, struct sk_buff *skb){
 	u16 family = sk->__sk_common.skc_family;
 	if (family == AF_INET) {
 		struct pkt_lost info = {};
+		struct tcp_skb_cb *tph = TCP_SKB_CB(skb);
+
 		info.timestamp = bpf_ktime_get_ns();
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
 
-		struct tcphdr *tcp = skb_to_tcphdr(skb);
 		info.loss_trigger = 1;
-		info.seq = tcp->seq;
-		info.seq = be32_to_cpu(info.seq);
+		info.seq = tph->seq;
+		//info.seq = be32_to_cpu(info.seq);
 
 		mark_lost.perf_submit(ctx, &info, sizeof(info));
+		return TC_ACT_OK;
 	}
 }
 
@@ -206,6 +209,8 @@ void trace_timeout_trigger(struct pt_regs *ctx, struct sock *sk) {
 		info.saddr = sk->__sk_common.skc_rcv_saddr;
 
 		const struct inet_connection_sock *icsk = inet_csk(sk);
+		struct sk_buff *skb = sk->sk_write_queue.next;
+		struct tcp_skb_cb *tph = TCP_SKB_CB(skb);
 		int event = icsk->icsk_pending;
 		switch (event) {
 		case ICSK_TIME_LOSS_PROBE:
@@ -217,7 +222,7 @@ void trace_timeout_trigger(struct pt_regs *ctx, struct sock *sk) {
 		default:
 			info.loss_trigger = 0;
 		}
-		info.seq = -1;
+		info.seq = tph->seq;
 
 		if (info.loss_trigger > 0)
 			mark_lost.perf_submit(ctx, &info, sizeof(info));
