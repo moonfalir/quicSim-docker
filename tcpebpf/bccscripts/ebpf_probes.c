@@ -110,7 +110,7 @@ void trace_cong_avoid(struct pt_regs *ctx, struct tcp_sock *tp, u32 w, u32 acked
 		info.min_rtt = tp->rtt_min.s[0].v;
 		info.smoothed_rtt = tp->srtt_us >> 3;
 		info.latest_rtt = tp->rack.rtt_us;
-		info.rttvar_us = tp->rttvar_us;
+		info.rttvar_us = tp->mdev_us;
 		info.snd_cwnd = tp->snd_cwnd;
 		info.pkts_in_flight = tp->packets_out;
 		
@@ -141,7 +141,7 @@ void trace_slow_start(struct pt_regs *ctx, struct tcp_sock *tp, u32 acked) {
 		info.min_rtt = tp->rtt_min.s[0].v;
 		info.smoothed_rtt = tp->srtt_us >> 3;
 		info.latest_rtt = tp->rack.rtt_us;
-		info.rttvar_us = tp->rttvar_us;
+		info.rttvar_us = tp->mdev_us;
 		
 		if (acked <= tp->packets_out)
 			info.pkts_in_flight = tp->packets_out - acked;
