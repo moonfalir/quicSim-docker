@@ -108,7 +108,7 @@ class FileManager:
         pcapfile = open(jsonfiles[0], 'r').read()
         decrypterrors = pcapfile.count("quic.decryption_failed")
 
-        if decrypterrors < 20:
+        if decrypterrors < 1000:
             met_calc.calculateMetrics(logdir, jsonfiles, self.serverqlog, True, isquic, sim, run)
             
         # remove converted pcap files
