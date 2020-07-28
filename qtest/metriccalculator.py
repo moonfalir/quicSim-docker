@@ -1,10 +1,10 @@
 import os, json
+from operator import itemgetter
 
 class MetricCalculator():
     _metricsperfile = []
-    qlogtunit = "ms"
     
-    def calculateMetrics(self, logdir: str, tcpdumpfiles: list, qlogfile: str, istcpdump: bool, isquic: bool, sim: str, run: int):
+    def calculateMetrics(self, logdir: str, tcpdumpfiles: list, qlogs: list, istcpdump: bool, isquic: bool, sim: str, run: int):
         split_dir = logdir.split("/")
         name = split_dir[len(split_dir) - 3] + "/" + split_dir[len(split_dir) - 2]
 
@@ -38,11 +38,12 @@ class MetricCalculator():
             "avg_retrans_timer": 0.0,
             "loss_triggers": {}
         }
-        for file in tcpdumpfiles:
-            serverside = "server" in file
-            totals, run_avgs = self.getTcpDumpMetrics(file, isquic, serverside, run_avgs, totals)
-        if qlogfile != "":
-            run_avgs = self.getQlogMetrics(qlogfile, run_avgs, totals)
+        run_avgs = self.getQlogMetrics(qlogs, run_avgs, totals)
+
+        if len(qlogs) < 2:
+            for file in tcpdumpfiles:
+                serverside = "server" in file
+                totals, run_avgs = self.getTcpDumpMetrics(file, isquic, serverside, run_avgs, totals)
 
         # calculate averages
         run_avgs["avg_throughput"] = self.divide(run_avgs["avg_throughput"], 125.0)
@@ -55,12 +56,7 @@ class MetricCalculator():
         run_avgs["avg_rack_timer"] = self.divide(run_avgs["avg_rack_timer"], totals["rackt_count"])
         run_avgs["avg_probe_timer"] = self.divide(run_avgs["avg_probe_timer"], totals["probet_count"])
         run_avgs["avg_retrans_timer"] = self.divide(run_avgs["avg_retrans_timer"], totals["retranst_count"])
-        if self.qlogtunit == "us":
-            run_avgs["avg_rttvar"] = self.divide(run_avgs["avg_rttvar"], 1000)
-            run_avgs["avg_rack_timer"] = self.divide(run_avgs["avg_rack_timer"], 1000)
-            run_avgs["avg_probe_timer"] = self.divide(run_avgs["avg_probe_timer"], 1000)
-            run_avgs["avg_retrans_timer"] = self.divide(run_avgs["avg_retrans_timer"], 1000)
-            run_avgs["avg_rtt"] = self.divide(run_avgs["avg_rtt"], 1000)
+        
         id = next((index for (index, d) in enumerate(self._metricsperfile) if d["name"] == name and d["sim"] == sim), None)
         if id == None:
             self._metricsperfile.append({
@@ -91,33 +87,82 @@ class MetricCalculator():
             print("Division error")
             return 0.0
 
-    def getQlogMetrics(self, file: str, run_avgs: dict, totals: dict):
-        data = ""
-        with open(file, "r") as qlog_file:
-            data = qlog_file.read()
-
-        qlog = json.loads(data)
-        events = qlog["traces"][0]["events"]
+    def getQlogMetaInfo(self, qlog: dict):
+        qlogmeta = {}
         # get structure of event fields
         event_fields = [x.lower() for x in qlog["traces"][0]["event_fields"]]
 
         # get time unit
         if "configuration" in qlog["traces"][0] and "time_units" in qlog["traces"][0]["configuration"]:
-            self.qlogtunit = qlog["traces"][0]["configuration"]["time_units"]
+            qlogmeta["tunit"] = qlog["traces"][0]["configuration"]["time_units"]
         try:
-            event_type_id = event_fields.index("event_type")
+            qlogmeta["event_type_id"] = event_fields.index("event_type")
         except ValueError as e:
-            event_type_id = event_fields.index("event")
-        data_id = event_fields.index("data")
+            qlogmeta["event_type_id"] = event_fields.index("event")
+        qlogmeta["data_id"] = event_fields.index("data")
+        qlogmeta["isquant"] = qlog["summary"]["server"] == "quant"
 
-        # loop through events to find CWND values
+        return qlogmeta
+
+    def getQlogMetrics(self, qlogs: list, run_avgs: dict, totals: dict):
+        data = ""
+        sv_qlog = [i for i, s in enumerate(qlogs) if 'sv_' in s]
+        if  len(sv_qlog) < 1:
+            return   
+
+        with open(qlogs[sv_qlog[0]], "r") as qlog_file:
+            data = qlog_file.read()
+
+        qlog = json.loads(data)
+        events = qlog["traces"][0]["events"]
+        qlogmeta = self.getQlogMetaInfo(qlog)
+        tunit = qlogmeta["tunit"]
+        event_type_id = qlogmeta["event_type_id"]
+        data_id = qlogmeta["data_id"]
+        isquant = qlogmeta["isquant"]
+        # loop through events
         for event in events:
             if event[event_type_id] == "metrics_updated":
-                self.getAvgUpdatedMetrics(run_avgs, totals, event[data_id])
+                self.getAvgUpdatedMetrics(run_avgs, totals, event[data_id], tunit)
             elif event[event_type_id] == "packet_lost":
                 self.getLossTriggers(run_avgs, event[data_id])
             elif "_timer" in event[event_type_id]:
-                self.getTimerValues(run_avgs, totals, event[data_id], event[event_type_id])
+                self.getTimerValues(run_avgs, totals, event[data_id], event[event_type_id], tunit)
+            elif event[event_type_id] == "packet_received":
+                timestamp = float(event[0]) / 1000
+                if tunit == "us":
+                    timestamp = self.divide(timestamp, 1000)
+                totals, run_avgs = self.processQuicPacket(event[data_id], True, run_avgs, totals, False, timestamp, isquant)
+            elif event[event_type_id] == "packet_sent":
+                timestamp = float(event[0]) / 1000
+                if tunit == "us":
+                    timestamp = self.divide(timestamp, 1000)
+                totals, run_avgs = self.processQuicPacket(event[data_id], True, run_avgs, totals, True, timestamp, isquant)
+        if len(qlogs) > 1:
+            cl_qlog = [i for i, s in enumerate(qlogs) if 'cl_' in s]
+            if  len(cl_qlog) < 1:
+                return run_avgs
+            with open(qlogs[cl_qlog[0]], "r") as qlog_file:
+                data = qlog_file.read()
+
+            qlog = json.loads(data)
+            events = qlog["traces"][0]["events"]
+            qlogmeta = self.getQlogMetaInfo(qlog)
+            tunit = qlogmeta["tunit"]
+            event_type_id = qlogmeta["event_type_id"]
+            data_id = qlogmeta["data_id"]
+            # loop through events
+            for event in events:
+                if event[event_type_id] == "packet_received":
+                    timestamp = float(event[0]) / 1000
+                    if tunit == "us":
+                        timestamp = self.divide(timestamp, 1000)
+                    totals, run_avgs = self.processQuicPacket(event[data_id], False, run_avgs, totals, True, timestamp, isquant)
+                elif event[event_type_id] == "packet_sent":
+                    timestamp = float(event[0]) / 1000
+                    if tunit == "us":
+                        timestamp = self.divide(timestamp, 1000)
+                    totals, run_avgs = self.processQuicPacket(event[data_id], False, run_avgs, totals, False, timestamp, isquant)
 
         return run_avgs
 
@@ -128,31 +173,41 @@ class MetricCalculator():
         else:
             run_avgs["loss_triggers"][trigger] = 1
 
-    def getAvgUpdatedMetrics(self, run_avgs: dict, totals: dict, event_data: dict):
+    def getAvgUpdatedMetrics(self, run_avgs: dict, totals: dict, event_data: dict, tunit: str):
         if "cwnd" in event_data:
             cur_cwnd = float(event_data["cwnd"])
             run_avgs["avg_cwnd"] += cur_cwnd
             totals["cwnd_amount"] += 1
         if "rtt_variance" in event_data:
             rttvar = float(event_data["rtt_variance"])
+            if tunit == "us":
+                rttvar = self.divide(rttvar, 1000)
             run_avgs["avg_rttvar"] += rttvar
             totals["rttvar_amount"] += 1
         if "latest_rtt" in event_data:
             lat_rtt = float(event_data["latest_rtt"])
+            if tunit == "us":
+                lat_rtt = self.divide(lat_rtt, 1000)
             run_avgs["avg_rtt"] += lat_rtt
             totals["rtt_amount"] += 1
     
-    def getTimerValues(self, run_avgs: dict, totals: dict, event_data: dict, timer_type: str):
+    def getTimerValues(self, run_avgs: dict, totals: dict, event_data: dict, timer_type: str, tunit: str):
         if timer_type == "rack_timer":
             timer = float(event_data["timer"])
+            if tunit == "us":
+                timer = self.divide(timer, 1000)
             run_avgs["avg_rack_timer"] += timer
             totals["rackt_count"] += 1
         elif timer_type == "probe_timer":
             timer = float(event_data["timer"])
+            if tunit == "us":
+                timer = self.divide(timer, 1000)
             run_avgs["avg_probe_timer"] += timer
             totals["probet_count"] += 1
         elif timer_type == "retrans_timer":
             timer = float(event_data["timer"])
+            if tunit == "us":
+                timer = self.divide(timer, 1000)
             run_avgs["avg_retrans_timer"] += timer
             totals["retranst_count"] += 1
 
@@ -200,25 +255,26 @@ class MetricCalculator():
     def checkPacketSendByServer(self, packet: dict, serverip: str):
         return serverip == packet["_source"]["layers"]["ip"]["ip.src"]
 
-    def processQuicPacket(self, packet: dict, serverside: bool, run_avgs: dict, totals: dict, isserver: bool):
+    def processQuicPacket(self, packet: dict, serverside: bool, run_avgs: dict, totals: dict, isserver: bool, timestamp: float, isquant: bool):
         if serverside:
             if isserver:
                 try:
                     # complete size of packet
-                    bytes_amount = float(packet['_source']['layers']["frame"]["frame.len"])
-                    timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
-                    totals, run_avgs = self.addThroughputBytes(run_avgs, bytes_amount, totals, timestamp)
-                    self.checkRetransmissions(run_avgs,totals,packet['_source']['layers']["quic"], True)
+                    bytes_amount = float(packet['header']['packet_size']) + 46
+                    totals, run_avgs = self.addThroughputBytes(run_avgs, bytes_amount, totals, timestamp, isquant)
+                    self.checkRetransmissionsQUIC(run_avgs,totals,packet)
                 except KeyError as e:
                     print(e)
             #tracked acked packets
-            self.trackAckedPktsQUIC(packet, run_avgs, totals, isserver)
+            self.trackAckedPktsQUIC(packet, run_avgs, totals, isserver, timestamp)
         else:
             if isserver:
                 try:
-                    frames = packet['_source']['layers']["quic"]["quic.frame"]
-                    bytes_amount = self.getQuicFrameLength(frames)
-                    timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
+                    frames = packet["frames"]
+                    bytes_amount = 0
+                    for frame in frames:
+                        if frame["frame_type"] == "stream":
+                            bytes_amount = int(frame["length"])
                     totals, run_avgs = self.addGoodputBytes(run_avgs, bytes_amount, totals, timestamp)
                 except KeyError as e:
                     print(e)
@@ -234,7 +290,7 @@ class MetricCalculator():
                     bytes_amount = float(packet['_source']['layers']["frame"]["frame.len"])
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
                     totals, run_avgs = self.addThroughputBytes(run_avgs, bytes_amount, totals, timestamp)
-                    self.checkRetransmissions(run_avgs,totals,packet['_source']['layers']["tcp"], False)
+                    self.checkRetransmissionsTCP(run_avgs,totals,packet['_source']['layers']["tcp"])
                 except KeyError as e:
                     print(e)
             #find RTT
@@ -249,21 +305,15 @@ class MetricCalculator():
                     print(e)
 
         return totals, run_avgs
-    def trackAckedPktsQUIC(self, packet: dict, run_avgs: dict, totals: dict, isserver: bool):
+    def trackAckedPktsQUIC(self, packet: dict, run_avgs: dict, totals: dict, isserver: bool, timestamp: float):
         if not isserver:
             try:
                 ackframe = self.getAckFrame(packet)
                 if ackframe:
-                    ack_timestamp = float(packet['_source']['layers']['frame']['frame.time_relative']) * 1000
-                    large_ack = int(ackframe['quic.ack.largest_acknowledged'])
-                    first_range = large_ack - int(ackframe['quic.ack.first_ack_range'])
-                    acked_packets = []
-                    ackranges = [{
-                        "high_ack": large_ack,
-                        "low_ack": first_range
-                    }]
-                    ackranges = self.getAckRangesQUIC(ackframe, ackranges, first_range)
-                    ackranges.reverse()
+                    ack_timestamp = timestamp
+                    ackranges = ackframe["acked_ranges"]
+                    #ackranges = self.getAckRangesQUIC(ackframe, ackranges, first_range)
+                    ackranges = sorted(ackranges,  key=itemgetter(0))
                     totals["ackranges"] = ackranges
             except TypeError as t:
                 print(t)
@@ -276,7 +326,6 @@ class MetricCalculator():
                 tcppacket = packet['_source']['layers']["tcp"] 
                 ack_timestamp = float(packet['_source']['layers']['frame']['frame.time_relative']) * 1000
                 large_ack = int(tcppacket['tcp.ack'])
-                acked_packets = []
                 ackranges = [{
                     "high_ack": large_ack,
                     "low_ack": 0
@@ -289,16 +338,12 @@ class MetricCalculator():
                 print(e)
 
     def getAckFrame(self, packet: dict):
-        frames = packet['_source']['layers']["quic"]["quic.frame"]
+        frames = packet["frames"]
         ackframe = None
-        if isinstance(frames, list):
-            for frame in frames:
-                if frame["quic.frame_type"] == "2":
-                    ackframe = frame
-                    break
-        else:
-            if frames["quic.frame_type"] == "2":
-                    ackframe = frames
+        for frame in frames:
+            if frame["frame_type"] == "ack":
+                ackframe = frame
+                break
         return ackframe
     
     def getAckRangesTCP(self, tcppacket: dict, ackranges: list):
@@ -357,7 +402,7 @@ class MetricCalculator():
         acked = False
         if isquic:
             for ackrange in ackranges:
-                if pn >= ackrange['low_ack'] and pn <= ackrange['high_ack']:
+                if pn >= int(ackrange[0]) and pn <= int(ackrange[1]):
                     acked = True
                     break
         else:
@@ -390,7 +435,7 @@ class MetricCalculator():
         
         return bytes_amount
 
-    def addThroughputBytes(self, run_avgs: dict, bytes_amount: float, totals: dict, timestamp: float):
+    def addThroughputBytes(self, run_avgs: dict, bytes_amount: float, totals: dict, timestamp: float, isquant: bool):
         run_avgs["avg_throughput"] += bytes_amount
         totals["tp_time"] = timestamp
         return totals, run_avgs
@@ -400,52 +445,45 @@ class MetricCalculator():
         totals["gp_time"] = timestamp
         return totals, run_avgs
 
-    def checkRetransmissions(self, run_avgs: dict, totals: dict, packet: dict, isquic: bool):
-        if not isquic:
+    def checkRetransmissionsTCP(self, run_avgs: dict, totals: dict, packet: dict):
             cur_seq = int(packet["tcp.seq"])
             if cur_seq < totals["next_seq"]:
                 bytes_amount = float(packet["tcp.len"])
                 run_avgs["avg_goodput"] -= bytes_amount
                 run_avgs["retransmissions"] += 1
-                acked = self.isAcked(totals["ackranges"], cur_seq, isquic)
+                acked = self.isAcked(totals["ackranges"], cur_seq, False)
                 if acked:
                     run_avgs["spurious_retrans"] += 1
             next_seq = int(packet["tcp.nxtseq"])
             if next_seq > totals["next_seq"]:
                 totals["next_seq"] = next_seq
-        else:
-            if type(packet) == list:
-                packet = packet[0]
-            frames = packet["quic.frame"]
-            if type(frames) == dict:
-                frames = [frames]
-            for frame in frames:
-                if "quic.stream.offset" in frame:
-                    cur_seq = int(frame["quic.stream.offset"])
-                    if cur_seq < totals["next_seq"]:
-                        bytes_amount = self.getQuicFrameLength(frames)
-                        run_avgs["avg_goodput"] -= bytes_amount
-                        run_avgs["retransmissions"] += 1
-                        if cur_seq in totals["quic_offset_pns"].keys():
-                            for pn in totals["quic_offset_pns"][cur_seq]:
-                                acked = self.isAcked(totals["ackranges"], pn, isquic)
-                                if acked:
-                                    run_avgs["spurious_retrans"] += 1
-                                    break
 
-                    if "quic.short" in packet:
-                        pn = int(packet["quic.short"]["quic.packet_number"])
-                    else:
-                        pn = int(packet["quic.packet_number"])
-
+    def checkRetransmissionsQUIC(self, run_avgs: dict, totals: dict, packet: dict):
+        frames = packet["frames"]
+        for frame in frames:
+            if frame["frame_type"] == "stream":
+                cur_seq = int(frame["offset"])
+                if cur_seq < totals["next_seq"]:
+                    bytes_amount = frame["length"]
+                    run_avgs["avg_goodput"] -= bytes_amount
+                    run_avgs["retransmissions"] += 1
                     if cur_seq in totals["quic_offset_pns"].keys():
-                        totals["quic_offset_pns"][cur_seq].append(pn)
-                    else:
-                        totals["quic_offset_pns"][cur_seq] = [pn]
+                        for pn in totals["quic_offset_pns"][cur_seq]:
+                            acked = self.isAcked(totals["ackranges"], pn, True)
+                            if acked:
+                                run_avgs["spurious_retrans"] += 1
+                                break
 
-                    if cur_seq > totals["next_seq"]:
-                        totals["next_seq"] = cur_seq
-                    break
+                pn = int(packet["header"]["packet_number"])
+
+                if cur_seq in totals["quic_offset_pns"].keys():
+                    totals["quic_offset_pns"][cur_seq].append(pn)
+                else:
+                    totals["quic_offset_pns"][cur_seq] = [pn]
+
+                if cur_seq > totals["next_seq"]:
+                    totals["next_seq"] = cur_seq
+                break
     
     # for each test scenario: find median values from all runs
     def getMedianValues(self, runs: list):

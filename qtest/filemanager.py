@@ -6,7 +6,7 @@ class FileManager:
     
     def __init__(self):
         print("")
-        self.serverqlog = ""
+        self.qlogs = []
 
     def addTestInfo(self, testlogdir: str, scenario: str, clientpars: str, serverpars: str, clientname: str, servername: str, simulation: str):
         regex = re.compile("^(?![cs][lv]_).+\.qlog")
@@ -86,8 +86,7 @@ class FileManager:
         split_path[len(split_path) - 1] = newfilename
         newpath = sep.join(split_path)
 
-        if not vantageclient:
-            self.serverqlog = newpath
+        self.qlogs.append(newpath)
 
         with open(newpath, "w") as qlog_file:
             json.dump(newdata_file, qlog_file)
@@ -108,12 +107,11 @@ class FileManager:
         pcapfile = open(jsonfiles[0], 'r').read()
         decrypterrors = pcapfile.count("quic.decryption_failed")
 
-        if decrypterrors < 20:
-            met_calc.calculateMetrics(logdir, jsonfiles, self.serverqlog, True, isquic, sim, run)
+        met_calc.calculateMetrics(logdir, jsonfiles, self.qlogs, True, isquic, sim, run)
             
         # remove converted pcap files
         for jsonfile in jsonfiles:
             os.remove(jsonfile)     
-        self.serverqlog = ""
+        self.qlogs = []
 
-        return (decrypterrors < 20)
+        return True
