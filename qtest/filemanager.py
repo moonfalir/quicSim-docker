@@ -26,7 +26,7 @@ class FileManager:
                 serverpars, 
                 clientname, 
                 servername,
-                True if "client" in qlog else False
+                True if "client" in qlog or "clnt" in qlog else False
             )
 
     def updateFile(self, file: str, scenario: str, simulation: str, clparams: str, svparams: str, client: str, server: str, vantageclient: bool):
