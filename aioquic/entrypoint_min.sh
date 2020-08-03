@@ -7,6 +7,7 @@
 
 if [ "$ROLE" == "client" ]; then
     git rev-parse HEAD > /logs/cl_commit.txt
+    sleep 2
     python3 examples/http3_client.py -v $CLIENT_PARAMS
     sleep 5
 elif [ "$ROLE" == "server" ]; then
