@@ -205,7 +205,6 @@ class MetricCalculator():
             if isserver:
                 try:
                     # complete size of packet
-                    frames = packet['_source']['layers']["quic"]["quic.frame"]
                     bytes_amount = float(packet['_source']['layers']["frame"]["frame.len"])
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
                     totals, run_avgs = self.addThroughputBytes(run_avgs, bytes_amount, totals, timestamp)
