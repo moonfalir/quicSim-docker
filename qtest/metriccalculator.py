@@ -222,7 +222,8 @@ class MetricCalculator():
                     frames = packet['_source']['layers']["quic"]["quic.frame"]
                     bytes_amount = self.getQuicFrameLength(frames)
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
-                    totals, run_avgs = self.addGoodputBytes(run_avgs, bytes_amount, totals, timestamp)
+                    if not self.conn_closed:
+                        totals, run_avgs = self.addGoodputBytes(run_avgs, bytes_amount, totals, timestamp)
                 except KeyError as e:
                     print(e)
                 except TypeError as t:
