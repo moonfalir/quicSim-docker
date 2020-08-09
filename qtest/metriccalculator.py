@@ -3,6 +3,7 @@ import os, json
 class MetricCalculator():
     _metricsperfile = []
     qlogtunit = "ms"
+    conn_closed = False
     
     def calculateMetrics(self, logdir: str, tcpdumpfiles: list, qlogfile: str, istcpdump: bool, isquic: bool, sim: str, run: int):
         split_dir = logdir.split("/")
@@ -38,6 +39,7 @@ class MetricCalculator():
             "avg_retrans_timer": 0.0,
             "loss_triggers": {}
         }
+        self.conn_closed = False
         for file in tcpdumpfiles:
             serverside = "server" in file
             totals, run_avgs = self.getTcpDumpMetrics(file, isquic, serverside, run_avgs, totals)
@@ -207,8 +209,9 @@ class MetricCalculator():
                     # complete size of packet
                     bytes_amount = float(packet['_source']['layers']["frame"]["frame.len"])
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
-                    totals, run_avgs = self.addThroughputBytes(run_avgs, bytes_amount, totals, timestamp)
-                    self.checkRetransmissions(run_avgs,totals,packet['_source']['layers']["quic"], True)
+                    if not self.conn_closed:
+                        totals, run_avgs = self.addThroughputBytes(run_avgs, bytes_amount, totals, timestamp)
+                        self.checkRetransmissions(run_avgs,totals,packet['_source']['layers']["quic"], True)
                 except KeyError as e:
                     print(e)
             #tracked acked packets
@@ -271,6 +274,14 @@ class MetricCalculator():
             except KeyError as e:
                 print(e)
 
+            try:
+                conn_closed = self.hasConnClose(packet)
+                self.conn_closed = conn_closed
+            except TypeError as t:
+                print(t)
+            except KeyError as e:
+                print(e)
+
     def trackAckedPktsTCP(self, packet: dict, run_avgs: dict, totals: dict, isserver: bool):
         if not isserver:
             try:
@@ -301,6 +312,19 @@ class MetricCalculator():
             if frames["quic.frame_type"] == "2":
                     ackframe = frames
         return ackframe
+
+    def hasConnClose(self, packet: dict):
+        frames = packet['_source']['layers']["quic"]["quic.frame"]
+        conn_close = None
+        if isinstance(frames, list):
+            for frame in frames:
+                if frame["quic.frame_type"] == "29":
+                    conn_close = frame
+                    break
+        else:
+            if frames["quic.frame_type"] == "29":
+                    conn_close = frames
+        return (conn_close != None)
     
     def getAckRangesTCP(self, tcppacket: dict, ackranges: list):
         # parse SACK information
