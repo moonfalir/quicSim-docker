@@ -267,8 +267,7 @@ class MetricCalculator():
                     }]
                     ackranges = self.getAckRangesQUIC(ackframe, ackranges, first_range)
                     ackranges.reverse()
-                    ackranges[0]["low_ack"] = 0
-                    totals["ackranges"] = ackranges
+                    totals["ackranges"] += ackranges
             except TypeError as t:
                 print(t)
             except KeyError as e:
