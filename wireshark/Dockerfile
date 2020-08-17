@@ -14,17 +14,18 @@ RUN apt-get update && apt-get install -y \
     git \
     libc-ares-dev \
     flex \
-    bison
+    bison \
+    unzip
 
 RUN mkdir wiresharksrc && mkdir wiresharkbld
 
 WORKDIR /wiresharksrc
 
-RUN wget https://www.wireshark.org/download/automated/src/wireshark-3.3.0rc0-1405-g77d94aea243c.tar.xz &&  tar -xvf wireshark-3.3.0rc0-1405-g77d94aea243c.tar.xz
+RUN wget https://github.com/wireshark/wireshark/archive/151ee605559ac0d61eb8618a75985772c57dbfa8.zip &&  unzip 151ee605559ac0d61eb8618a75985772c57dbfa8.zip
 
 WORKDIR /wiresharkbld
 
-RUN cmake -DBUILD_wireshark=OFF -DBUILD_mergecap=OFF -DBUILD_dftest=OFF -DBUILD_randpkt=OFF -DBUILD_dumpcap=OFF -DBUILD_rawshark=OFF -DENABLE_PCAP=OFF -DENABLE_PLUGINS=OFF /wiresharksrc/wireshark-3.3.0rc0-1405-g77d94aea243c
+RUN cmake -DBUILD_wireshark=OFF -DBUILD_mergecap=OFF -DBUILD_dftest=OFF -DBUILD_randpkt=OFF -DBUILD_dumpcap=OFF -DBUILD_rawshark=OFF -DENABLE_PCAP=OFF -DENABLE_PLUGINS=OFF /wiresharksrc/wireshark-151ee605559ac0d61eb8618a75985772c57dbfa8
 
 RUN make
 
