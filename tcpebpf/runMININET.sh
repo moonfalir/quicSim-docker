@@ -1,6 +1,6 @@
 CURTIME=$(date +%Y-%m-%d-%H-%M) \
 CLIENT="tcpebpf" \
-CLIENT_PARAMS="-s -1" \
+CLIENT_PARAMS="-s" \
 SERVER="tcpebpf" \
 SERVER_PARAMS="-c 10.0.0.252 -n 5000000 --set-mss 1268" \
 SCENARIO="simple_p2p --delay 15ms --bandwidth 5 --queue 25 -k" \

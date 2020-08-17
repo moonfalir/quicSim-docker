@@ -1,9 +1,9 @@
 CURTIME=$(date +%Y-%m-%d-%H-%M) \
-CLIENT="quant" \
-CLIENT_PARAMS="-i eth1 -q /logs http://10.0.0.251:4433/5000000" \
+CLIENT="aioquic" \
+CLIENT_PARAMS="--ca-certs tests/pycacert.pem --insecure -q /logs -l /logs/ssl-key.log --legacy-http https://10.0.0.251:4433/5000000" \
 SERVER="quant" \
-SERVER_PARAMS="-t 2 -i eth1 -q /logs" \
-SCENARIO="blackhole --delay 25ms --bandwidth 5 --queue 25 --on 6 --off 2" \
+SERVER_PARAMS="-p 4433 -i eth1 -q /logs" \
+SCENARIO="simple_p2p --delay 10ms --bandwidth 10 --queue 32" \
 CLIENT_LOGS="$PWD/logs" \
 SERVER_LOGS="$PWD/logs" \
 CL_COMMIT="" \
