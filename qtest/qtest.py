@@ -31,10 +31,13 @@ class QTest:
         testlogdir = rootlogdir + servername + "/" + scenario['name'] + "/run" + str(run + 1)
         testoutputdir = rootoutputdir + servername + "/" + scenario['name'] + "/run" + str(run + 1)
 
+
+        # create directories for logs and sim output
         if not os.path.isdir(testlogdir):
             os.makedirs(testlogdir)
             os.makedirs(testoutputdir)  
 
+        # set up docker command to run test with NS-3: gather all parameters
         bytesreq = scenario["bytesreq"]
         logging.debug("Request: %s bytes", bytesreq)
         tcpqns_config = ""
@@ -58,6 +61,7 @@ class QTest:
         print("Server: " + servername + ". Client: " + clientname + ". Test case: " + scenario["qns"] + ". Simulation: QNS")
         runsuccess = False
         filemngr = FileManager()
+        # keep running test if too many decryption errors are in pcap
         while not runsuccess:
             try:
                 r = subprocess.run(qnscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=90)
@@ -71,6 +75,7 @@ class QTest:
 
             filemngr = FileManager()
             
+            # Parse test results
             clpars = clients[clientid]['clpars_qns']
             clpars = clpars.replace("$CURTIME" , curtime)
             clpars = clpars.replace("$BYTESREQ", bytesreq)
@@ -79,6 +84,7 @@ class QTest:
             filemngr.addTestInfo(testlogdir, scenario["qns"], clpars, svpars, clientname, servername, "QNS")
             runsuccess = filemngr.pcaptojson(testlogdir, "QNS", met_calc, isquic, run)
 
+        # set up docker command to run test with Mininet: gather all parameters
         scenario_min = scenario["min"]
         if not isquic:
             scenario_min += " -k"
@@ -116,7 +122,7 @@ class QTest:
             svpars = svpars.replace("$CURTIME" , curtime)
             filemngr.addTestInfo(testlogdir, scenario["min"], clpars, svpars, clientname, servername, "MIN")
             runsuccess = filemngr.pcaptojson(testlogdir, "MIN", met_calc, isquic, run)
-
+    # Run all tests locally on machine
     def run(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
         rootlogdir = os.path.dirname(os.path.abspath(__file__)) + "/logs/" + curtime
@@ -127,17 +133,18 @@ class QTest:
         rootoutputdir += "/"
 
         met_calc = MetricCalculator()
-
+        # log test scenarios that were run
         with open(rootlogdir + "scenarios.json", "w+") as sc_file:
             json.dump(SCENARIOS, sc_file, indent=4, separators=(',', ': '))
         with open(rootoutputdir + "scenarios.json", "w+") as sc_file:
             json.dump(SCENARIOS, sc_file, indent=4, separators=(',', ': '))
+        # For each quic server and client and scenario: run test    
         for serverid, server in enumerate(self._implementations['quic_servers']):
             for clientid, client in enumerate(self._implementations['quic_clients']):
                 for scenario in SCENARIOS:
                     for run in range(0, self._runs):
                         self._run_testcase(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, met_calc, True, run)
-
+        # For TCP server and client and each scenario: run test
         for serverid, server in enumerate(self._implementations['tcp_servers']):
             for clientid, client in enumerate(self._implementations['tcp_clients']):
                 for scenario in SCENARIOS:
@@ -146,7 +153,6 @@ class QTest:
 
         met_calc.saveMetrics(rootlogdir)
 
-
 class QTestDist:
     _implementations = []
     _runs = 1
@@ -154,6 +160,7 @@ class QTestDist:
         self._implementations = implementations
         self._runs = runs
 
+    # For each server, client and scenario get test parameters for both simulators
     def getTestCaseInfo(self, serverid: int, clientid: int, rootlogdir: str, rootoutputdir: str, curtime: str, scenario: dict, isquic: bool, run: int, testlist: list):
         if isquic:
             servers = self._implementations['quic_servers']
@@ -164,10 +171,12 @@ class QTestDist:
 
         clientname = clients[clientid]['name']
         servername = servers[serverid]['name']
-    
+
+        # Get log and output directory names
         testlogdir = rootlogdir + servername + "/" + scenario['name'] + "/run" + str(run + 1)
         testoutputdir = rootoutputdir + servername + "/" + scenario['name'] + "/run" + str(run + 1)   
 
+        # Save all test parameters for NS-3 simulator
         bytesreq = scenario["bytesreq"]
         logging.debug("Request: %s bytes", bytesreq)
         tcpqns_config = ""
@@ -192,6 +201,7 @@ class QTestDist:
         }
         testlist.append(testcase)
 
+        # Save all test parameters for Mininet simulator
         scenario_min = scenario["min"]
         tcp_config = ""
         if not isquic:
@@ -218,6 +228,8 @@ class QTestDist:
         
         return testlist
 
+    # Get all server, client and scenario combinations
+    # Gives list of necessary test parameters
     def predetermineTestCases(self):
         curtime = time.strftime("%Y-%m-%d-%H-%M", time.gmtime())
         rootlogdir = "/home/jreynders/quicSim-docker/qtest/logs/" + curtime
@@ -241,12 +253,14 @@ class QTestDist:
                         testcases = self.getTestCaseInfo(serverid, clientid, rootlogdir, rootoutputdir, curtime, scenario, False, run, testcases)
 
         return testcases, curtime
-    
+    # Run testcase that is generated from predetermineTestCases()
     def runDistTestCase(self, testcase, met_calc):
         #create logdir
         if not os.path.isdir(testcase["testlogdir"]):
             os.makedirs(testcase["testlogdir"])
             os.makedirs(testcase["testoutputdir"])
+        
+        # Create docker command to run testcase: get all parameters
         bytesreq = testcase["bytesreq"]
         isquic = testcase["tcp_config"] == ""
         cmd = (
@@ -262,6 +276,7 @@ class QTestDist:
             "CL_COMMIT=\"" + testcase['cl_commit'] + "\" "
             "SV_COMMIT=\"" + testcase['sv_commit'] + "\" "
         )
+        # Check which simulator to run
         if testcase["sim"] == "qns":
             o_file = "/qns.out"
             cmd = cmd + "docker-compose -f ../quic-network-simulator/docker-compose.yml " + testcase["tcp_config"] + "up --abort-on-container-exit"
@@ -297,9 +312,11 @@ class QTestDist:
         testcases = json.load(testcasesfile)
         met_calc = MetricCalculator()
 
+        # Go through list of tests
         for testcase in testcases:
            self.runDistTestCase(testcase, met_calc)
         
+        # Save all metrics to file: later to be combined with files from other VMs
         metrics = met_calc.getMetrics()
         split_dir = testcases[0]["testlogdir"].split("/")
         split_dir = split_dir[0:len(split_dir) - 3]

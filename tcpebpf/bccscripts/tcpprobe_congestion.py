@@ -12,9 +12,8 @@ import sys
 # Initialize BPF
 b = BPF(src_file="ebpf_probes.c")
 
-# Attach trace functions to event functions as k(ret)probes
+# Attach trace functions to kernel functions as k(ret)probes
 b.attach_kprobe(event="tcp_reno_cong_avoid", fn_name="trace_cong_avoid")
-#b.attach_kprobe(event="tcp_slow_start", fn_name="trace_slow_start")
 b.attach_kprobe(event="tcp_init_buffer_space", fn_name="trace_init_cong_control")
 b.attach_kprobe(event="tcp_mark_skb_lost", fn_name="trace_mark_lost")
 b.attach_kprobe(event="tcp_write_timer_handler", fn_name="trace_timeout_trigger")
@@ -46,6 +45,7 @@ qlog = {
 		}
 	]
 }
+# final packet event to generate congestion view in QVis
 final_pkt_evt = ["0", "transport", "packet_received", {
 	"packet_type": "1RTT", "header": {
 		"packet_number": "2656", "packet_size": 30, "dcid": "tcpebpf", "scid": ""
@@ -94,6 +94,7 @@ def print_cwnd_change(cpu, data, size):
 	event = b["cwnd_change"].event(data)
 	# get sender's IP
 	sender = inet_ntop(AF_INET, pack('I', event.saddr))
+	# Filter out IP for simulators since all kernel activity is logged
 	if sender.__contains__("10.0.0.251") or sender.__contains__("193.167.100.100"):
 		global prev_met_upd_t
 		output_arr = []
@@ -140,6 +141,7 @@ def print_init_cong_control(cpu, data, size):
 		global final_pkt_evt
 		final_pkt_evt[0] = output_arr[0]
 
+# Log loss triggers for packets that were declared lost
 def print_mark_lost(cpu, data, size):
 	event = b["mark_lost"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr))
@@ -168,6 +170,7 @@ def print_mark_lost(cpu, data, size):
 		global final_pkt_evt
 		final_pkt_evt[0] = output_arr[0]
 
+# Log value of timer and type of timer
 def print_timer_used(cpu, data, size):
 	event = b["timer_calc"].event(data)
 	sender = inet_ntop(AF_INET, pack('I', event.saddr))

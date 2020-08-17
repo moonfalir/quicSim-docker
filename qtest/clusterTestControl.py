@@ -19,31 +19,31 @@ servers = [
     '172.19.13.227',
 ]
 def serverThread(id, s_ip, testscenarios, username, password):
+    # Connect with SSH
     serverssh = paramiko.SSHClient()
     serverssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     serverssh.connect(hostname=s_ip, username=username, password=password)
 
     shell = serverssh.invoke_shell()
+    # Navigate to directory
     shell.send("cd ./quicSim-docker/qtest\n")
     shell.recv(9999)
 
+    # Send tests scenarios to server
     shell.send("echo \'" + json.dumps(testscenarios) + "\' > test.json\n")
     shell.recv(9999)
 
+    # Run test framework on server
     shell.send("sudo python3 run.py --distid " + str(id) + "\n")
     shell.send(password + "\n")
 
+    # Listen to output, continue if test framework finished
     while True:
         if shell.recv_ready():
             resp = shell.recv(9999).decode("utf-8")
             if "Distributed testcases complete" in resp:
                 break
             
-    # run through testscenarios
-        # create directory if needed
-        # run docker command
-        # process wireshark info and metrics
-        # append server to list
     print("server " + s_ip + " testcases complete")
 
 def main():
@@ -83,8 +83,7 @@ def main():
     # wait till server threads are finished
     for index, thread in enumerate(threads):
         thread.join()
-    # gather all server log files on to this server
-    # process metrics to get average values
+    
     print("main")
 
 main()

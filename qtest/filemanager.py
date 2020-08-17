@@ -61,7 +61,7 @@ class FileManager:
             "server": server,
             "server_params": svparams
         }
-
+        # Load in qlog file
         with open(file, "r") as qlog_file:
             data = qlog_file.read().lstrip()
             try:
@@ -108,7 +108,8 @@ class FileManager:
         pcapfile = open(jsonfiles[0], 'r').read()
         decrypterrors = pcapfile.count("quic.decryption_failed")
 
-        if decrypterrors < 1000:
+        # If too many decryption errors, re-run test
+        if decrypterrors < 200:
             met_calc.calculateMetrics(logdir, jsonfiles, self.serverqlog, True, isquic, sim, run)
             
         # remove converted pcap files
@@ -116,4 +117,4 @@ class FileManager:
             os.remove(jsonfile)     
         self.serverqlog = ""
 
-        return (decrypterrors < 20)
+        return (decrypterrors < 200)

@@ -8,7 +8,7 @@ class MetricCalculator():
     def calculateMetrics(self, logdir: str, tcpdumpfiles: list, qlogfile: str, istcpdump: bool, isquic: bool, sim: str, run: int):
         split_dir = logdir.split("/")
         name = split_dir[len(split_dir) - 3] + "/" + split_dir[len(split_dir) - 2]
-
+        # Init state variables to track totals and to calculate averages
         totals = {
             "rtt_amount": 0,
             "rttvar_amount": 0,
@@ -40,13 +40,14 @@ class MetricCalculator():
             "loss_triggers": {}
         }
         self.conn_closed = False
+
         for file in tcpdumpfiles:
             serverside = "server" in file
             totals, run_avgs = self.getTcpDumpMetrics(file, isquic, serverside, run_avgs, totals)
         if qlogfile != "":
             run_avgs = self.getQlogMetrics(qlogfile, run_avgs, totals)
 
-        # calculate averages
+        # calculate averages and convert throughput/goodput to Kbps
         run_avgs["avg_throughput"] = self.divide(run_avgs["avg_throughput"], 125.0)
         run_avgs["avg_throughput"] = self.divide(run_avgs["avg_throughput"], totals["tp_time"])
         run_avgs["avg_goodput"] = self.divide(run_avgs["avg_goodput"], 125.0)
@@ -57,6 +58,7 @@ class MetricCalculator():
         run_avgs["avg_rack_timer"] = self.divide(run_avgs["avg_rack_timer"], totals["rackt_count"])
         run_avgs["avg_probe_timer"] = self.divide(run_avgs["avg_probe_timer"], totals["probet_count"])
         run_avgs["avg_retrans_timer"] = self.divide(run_avgs["avg_retrans_timer"], totals["retranst_count"])
+        # convert time values to ms
         if self.qlogtunit == "us":
             run_avgs["avg_rttvar"] = self.divide(run_avgs["avg_rttvar"], 1000)
             run_avgs["avg_rack_timer"] = self.divide(run_avgs["avg_rack_timer"], 1000)
@@ -64,6 +66,7 @@ class MetricCalculator():
             run_avgs["avg_retrans_timer"] = self.divide(run_avgs["avg_retrans_timer"], 1000)
             run_avgs["avg_rtt"] = self.divide(run_avgs["avg_rtt"], 1000)
         id = next((index for (index, d) in enumerate(self._metricsperfile) if d["name"] == name and d["sim"] == sim), None)
+        # Check if this test is run 1 or higher
         if id == None:
             self._metricsperfile.append({
                 "name": name,
@@ -106,13 +109,15 @@ class MetricCalculator():
         # get time unit
         if "configuration" in qlog["traces"][0] and "time_units" in qlog["traces"][0]["configuration"]:
             self.qlogtunit = qlog["traces"][0]["configuration"]["time_units"]
+        # find event description field
         try:
             event_type_id = event_fields.index("event_type")
         except ValueError as e:
             event_type_id = event_fields.index("event")
+        # find event data field
         data_id = event_fields.index("data")
 
-        # loop through events to find CWND values
+        # loop through events
         for event in events:
             if event[event_type_id] == "metrics_updated":
                 self.getAvgUpdatedMetrics(run_avgs, totals, event[data_id])
@@ -122,7 +127,7 @@ class MetricCalculator():
                 self.getTimerValues(run_avgs, totals, event[data_id], event[event_type_id])
 
         return run_avgs
-
+    # Log triggers of lost packets
     def getLossTriggers(self, run_avgs: dict, event_data: dict):
         trigger = event_data["trigger"]
         if trigger in run_avgs["loss_triggers"].keys():
@@ -209,16 +214,18 @@ class MetricCalculator():
                     # complete size of packet
                     bytes_amount = float(packet['_source']['layers']["frame"]["frame.len"])
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
+                    # only track throughput if connection is not closed
                     if not self.conn_closed:
                         totals, run_avgs = self.addThroughputBytes(run_avgs, bytes_amount, totals, timestamp)
                         self.checkRetransmissions(run_avgs,totals,packet['_source']['layers']["quic"], True)
                 except KeyError as e:
                     print(e)
-            #tracked acked packets
+            #tracked acked packets to check for spurious retransmissions
             self.trackAckedPktsQUIC(packet, run_avgs, totals, isserver)
         else:
             if isserver:
                 try:
+                    # Get quic payload length for goodput calculation
                     frames = packet['_source']['layers']["quic"]["quic.frame"]
                     bytes_amount = self.getQuicFrameLength(frames)
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
@@ -234,6 +241,7 @@ class MetricCalculator():
         if serverside:
             if isserver:
                 try:
+                    # complete size of packet
                     bytes_amount = float(packet['_source']['layers']["frame"]["frame.len"])
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
                     totals, run_avgs = self.addThroughputBytes(run_avgs, bytes_amount, totals, timestamp)
@@ -245,6 +253,7 @@ class MetricCalculator():
         else:
             if isserver:
                 try:
+                    # Get tcp payload length for goodput calculation
                     bytes_amount = float(packet['_source']['layers']["tcp"]["tcp.len"])
                     timestamp = float(packet['_source']['layers']['frame']['frame.time_relative'])
                     totals, run_avgs = self.addGoodputBytes(run_avgs, bytes_amount, totals, timestamp)
@@ -266,6 +275,7 @@ class MetricCalculator():
                         "low_ack": first_range
                     }]
                     ackranges = self.getAckRangesQUIC(ackframe, ackranges, first_range)
+                    #reverse list to start from lowest ack range
                     ackranges.reverse()
                     totals["ackranges"] += ackranges
             except TypeError as t:
@@ -427,11 +437,13 @@ class MetricCalculator():
     def checkRetransmissions(self, run_avgs: dict, totals: dict, packet: dict, isquic: bool):
         if not isquic:
             cur_seq = int(packet["tcp.seq"])
+            # If sequence is lower than highest observer sequence: retransmission
             if cur_seq < totals["next_seq"]:
                 bytes_amount = float(packet["tcp.len"])
                 run_avgs["avg_goodput"] -= bytes_amount
                 run_avgs["retransmissions"] += 1
                 acked = self.isAcked(totals["ackranges"], cur_seq, isquic)
+                # if sequence already acked: spurious retransmission
                 if acked:
                     run_avgs["spurious_retrans"] += 1
             next_seq = int(packet["tcp.nxtseq"])
@@ -446,10 +458,12 @@ class MetricCalculator():
             for frame in frames:
                 if "quic.stream.offset" in frame:
                     cur_seq = int(frame["quic.stream.offset"])
+                    # if current stream offset is lower than highest stream offset: retransmission
                     if cur_seq < totals["next_seq"]:
                         bytes_amount = self.getQuicFrameLength(frames)
                         run_avgs["avg_goodput"] -= bytes_amount
                         run_avgs["retransmissions"] += 1
+                        # Chech for packets that contained same offset and see if they are acked already
                         if cur_seq in totals["quic_offset_pns"].keys():
                             for pn in totals["quic_offset_pns"][cur_seq]:
                                 acked = self.isAcked(totals["ackranges"], pn, isquic)
@@ -461,7 +475,7 @@ class MetricCalculator():
                         pn = int(packet["quic.short"]["quic.packet_number"])
                     else:
                         pn = int(packet["quic.packet_number"])
-
+                    # track packet number for this stream offset
                     if cur_seq in totals["quic_offset_pns"].keys():
                         totals["quic_offset_pns"][cur_seq].append(pn)
                     else:
